@@ -41,7 +41,8 @@ export default function useKYC({
 
                     // status 400 and db confirmation: repeat onboarding
                     if (msg?.includes("Invalid") || msg?.includes("review") || msg?.includes("error")) {
-                        notify({ message: "KYC NEEDS REVIEW", type: "error" });
+                        // notify({ message: "KYC NEEDS REVIEW", type: "error" });
+                        onError("KYC NEEDS REVIEW");
                         // history.push("/");
                         // return repeatOnboarding(); 
                     }
@@ -65,13 +66,13 @@ export default function useKYC({
             // setLoadingStatus("AN ERROR OCCURED");
             // await sleep(2000);
             // return repeatOnboarding();
-            notify({ message: "AN ERROR OCCURED", type: "error" });
+            // notify({ message: "AN ERROR OCCURED", type: "error" });
             // history.push("/");
-            onError();
+            onError("AN ERROR OCCURED");
         }
     }
 
-    const handleKYCResult = async (result) => {
+    const handleKYCResult = async (result, onSuccess, onError) => {
         console.log("KYC", result.status);
         const isFiat = paymentProcessor !== "etoken";
         console.log("isFiat", isFiat);
@@ -89,16 +90,17 @@ export default function useKYC({
                     setLoadingStatus("KYC WAS CANCELLED AGAIN");
                     await sleep(2000);
                     // history.push("/select");
+                    onError("KYC WAS CANCELLED AGAIN");
                 }
             case "error":
                 setLoadingStatus("A KYC ERROR OCCURED");
-                return setKycResult();
+                return setKycResult(onError);
 
             // ----Complete workflow-----
             case "auto_approved":
                 if (isFiat) {
                     setLoadingStatus("CAPTURE PAYMENT")
-                    return capturePayment();
+                    return capturePayment(onSuccess, onError);
                 } else {
                     setShowKyc(false);
                     break;
@@ -106,15 +108,16 @@ export default function useKYC({
             case "auto_declined":
                 setLoadingStatus("INVALID KYC");
                 if (isFiat)
-                    return setKycResult();
+                    return setKycResult(onError);
                 else {
                     // return repeatOnboarding();
-                    notify({ type: 'error', message: 'INVALID KYC' });
+                    // notify({ type: 'error', message: 'INVALID KYC' });
                     // history.push("/");
+                    onError("INVALID KYC");
                 }
             case "needs_review":
                 setLoadingStatus("KYC NEEDS REVIEW")
-                return setKycResult();
+                return setKycResult(onError);
         }
     }
 

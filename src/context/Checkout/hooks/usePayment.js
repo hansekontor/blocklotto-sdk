@@ -309,7 +309,8 @@ export default function usePayment({
             notify({ message: "AN ERROR OCCURED", type: "error" });
             await sleep(2000);
             // return repeatOnboarding();
-            history.push('/select');
+            // history.push('/select');            
+            onError();
         }
     }
 
