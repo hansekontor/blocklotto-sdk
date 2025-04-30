@@ -114,8 +114,11 @@ export const AppWrapper = ({ Loading, children, user }) => {
     }, []);
 
     useEffect(() => {
-        if (!walletUpdateAvailable) {
-            setWalletUpdateAvailable(true);
+        if (unredeemedTickets.length > 0) {
+            if (!walletUpdateAvailable)
+                setWalletUpdateAvailable(true);
+        } else if (walletUpdateAvailable) {
+            setWalletUpdateAvailable(false);
         }
     }, [unredeemedTickets]);
 
@@ -317,6 +320,7 @@ export const AppWrapper = ({ Loading, children, user }) => {
             ticketQuantity,
             affiliate,
             externalAid,
+            walletUpdateAvailable,
             checkRedeemability, 
             redeemTicket,
             changeEmail,
