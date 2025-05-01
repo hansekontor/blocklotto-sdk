@@ -30,21 +30,26 @@ export default function useKYC({
 
     const setKycResult = async (onError) => {
         try {
-            await sleep(8000);
+            await sleep(10000);
             for (let retries = 0; retries < 2; retries++) {
                 console.log("set kyc result, attempt", retries)
                 const rawPaymentRes = await sendPayment(authPayment.rawPayment);
 
+                // status 400 is expected with non approved kyc
                 if (rawPaymentRes.status == 400) {
                     const msg = await rawPaymentRes.text();
                     console.log("msg", msg);
 
-                    // status 400 and db confirmation: repeat onboarding
-                    if (msg?.includes("Invalid") || msg?.includes("review") || msg?.includes("error")) {
-                        // notify({ message: "KYC NEEDS REVIEW", type: "error" });
+                    if (msg?.includes("review")) {
                         onError("KYC NEEDS REVIEW");
-                        // history.push("/");
-                        // return repeatOnboarding(); 
+                    }
+                    
+                    if (msg?.includes("Invalid")) {
+                        onError("INVALID KYV");
+                    } 
+                    
+                    if (msg?.includes("declined") {
+                        onError("KYC WAS DECLINED");
                     }
 
                     if (msg?.includes("cancelled")) {
