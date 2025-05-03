@@ -46,11 +46,14 @@ export function CashoutProvider({ children }) {
     const previousPath = location.state?.returnTo || "/select";
 
     // force wallet update on cashout
-    useEffect(async () => {
-        setLoadingStatus("LOADING WALLET");
-        await forceWalletUpdate();
-        await sleep(3000);
-        setLoadingStatus(false);
+    useEffect(() => {
+        const loadWallet = async () => {
+            setLoadingStatus("LOADING WALLET");
+            await forceWalletUpdate();
+            await sleep(3000);
+            setLoadingStatus(false);
+        };
+        loadWallet();
     }, []);
 
     const checkBalance = () => {
