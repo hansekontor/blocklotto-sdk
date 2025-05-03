@@ -48,7 +48,7 @@ export default function useKYC({
                         onError("INVALID KYV");
                     } 
                     
-                    if (msg?.includes("declined") {
+                    if (msg?.includes("declined")) {
                         onError("KYC WAS DECLINED");
                     }
 
