@@ -29,7 +29,7 @@ export const AppContext = createContext/** @type {import('./types').AppContextVa
 export const AppWrapper = ({ Loading, children, user }) => {
     const history = useHistory();
     const { wallet, unredeemedTickets, balance, addMinedTicketToStorage, addRedeemTxToStorage, createWallet, validateMnemonic, forceWalletUpdate } = useCashTab();
-    const { checkRedeemability, broadcastTx } = useBCH();
+    const { getTxBcash, broadcastTx } = useBCH();
     const notify = useNotifications();
 
     /**
@@ -252,6 +252,49 @@ export const AppWrapper = ({ Loading, children, user }) => {
             console.error(err);
             notify({type: "error", message: "Broadcasting Error"});
             return;
+        }
+    }
+
+    // checks if ticket can be redeemed
+    const checkRedeemability = async (ticket, polling) => {
+        const hasLottoSig = ticket.parsed?.minedTicket?.lottoSignature;
+
+        if (hasLottoSig) {
+            console.log("hasLottoSig", hasLottoSig);
+            return true;
+        }
+
+        const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
+        let isMined = issueTxFromNode?.height > -1;
+
+        if (isMined) {
+            console.log("isMined", isMined);
+            return true;
+        } else if (polling) {
+            console.log("CHECKREDEEMABILITY start polling");
+            // poll indexer every 2 min
+            const timeBetweenPolling = 2 * 60 * 1000;
+
+            while (!isMined) {
+                console.log("started waiting time");
+                await sleep(timeBetweenPolling);
+                const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
+                console.log("issueTxFromNode", issueTxFromNode);
+                if (!issueTxFromNode) {
+                    notify({ error: "error", message: "Transaction does not exist"});
+                    return false;
+                }
+                isMined = issueTxFromNode.height > -1;
+                console.log("isMined", isMined);
+                if (!isMined) {
+                    notify({ message: "Please wait...", type: "info" });
+                } else {
+                    notify({ message: "You can redeem your ticket now!", type: "success" });
+                    return true;
+                }
+            }
+        } else {
+            return false;
         }
     }
 
