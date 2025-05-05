@@ -257,10 +257,9 @@ export default function useTillo() {
     return true;
   };
 
-  const handleTilloBrandChange = (e) => {
-    const selectedBrand = e.value;
+  const handleTilloBrandChange = (selectedBrand) => {
     const selectedBrandData = tilloSelection.find(
-      (item) => item.slug === selectedBrand
+      (item) => item.brand === selectedBrand
     );
 
     setBrandData(selectedBrandData);
@@ -277,5 +276,6 @@ export default function useTillo() {
     setGiftcardLink,
     filterTilloBrands,
     handleTilloBrandChange,
+    setTilloStage,
   };
 }

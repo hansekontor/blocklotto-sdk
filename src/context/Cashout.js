@@ -35,7 +35,8 @@ export function CashoutProvider({ children }) {
         handleTilloBrandChange,
         getGiftcard,
         setGiftcardAmount,
-        setGiftcardLink
+        setGiftcardLink,
+        setTilloStage
      } = useTillo();
 
     const token = slpBalancesAndUtxos.tokens?.length > 0 ? slpBalancesAndUtxos.tokens[0] : false;
@@ -96,6 +97,7 @@ export function CashoutProvider({ children }) {
                 handleTilloBrandChange,
                 getGiftcard,
                 getGiftcardLink,
+                setTilloStage,
             }}
         >
             {children}
