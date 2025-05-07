@@ -62,11 +62,7 @@ export function CashoutProvider({ children }) {
         return hasSufficientBalance;
     }
 
-    const getGiftcardLink = async (e) => {
-        e.preventDefault();
-
-        const brand = e.target.brand.value;
-
+    const getGiftcardLink = async (brand) => {
         const link = await getGiftcard(brand);
         setGiftcardLink(link);
 
