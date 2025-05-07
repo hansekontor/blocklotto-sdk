@@ -8,7 +8,7 @@
  * Please consult the project maintainers before making modifications.
  */
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useCashTab } from '../CashTab';
 import { useApp } from '../App';
 import { getWalletState } from '../../utils/cashMethods';
@@ -56,6 +56,10 @@ export const CheckoutProvider = ({ children }) => {
     const handlePaymentMethod = (method) => {
         setPaymentProcessor(method);
     }
+
+    useEffect(() => {
+        forceWalletUpdate();
+    }, [])
 
     useInitialLoad(tickets, setHasEmail, setIsKYCed);
 
