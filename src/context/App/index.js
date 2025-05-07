@@ -23,14 +23,17 @@ import useScript from '../../hooks/useScript';
 import TXUtil from '../../utils/txutil';
 import playerWinningsTier from '../../constants/winningTiers';
 import sleep from '../../utils/sleep';
+import { getWalletState } from '../../utils/cashMethods';
 
 export const AppContext = createContext/** @type {import('./types').AppContextValue} */({});
 
 export const AppWrapper = ({ Loading, children, user }) => {
     const history = useHistory();
-    const { wallet, unredeemedTickets, balance, addMinedTicketToStorage, addRedeemTxToStorage, createWallet, validateMnemonic, forceWalletUpdate } = useCashTab();
+    const { wallet, balance, addMinedTicketToStorage, addRedeemTxToStorage, createWallet, validateMnemonic, forceWalletUpdate } = useCashTab();
     const { getTxBcash, broadcastTx } = useBCH();
     const notify = useNotifications();
+    const walletState = getWalletState(wallet);
+    const { tickets } = walletState;
 
     /**
      * @typedef {number[]} PlayerNumbers
@@ -46,6 +49,12 @@ export const AppWrapper = ({ Loading, children, user }) => {
 
     /** @type {[boolean, (value: boolean) => void]} */
     const [loader, setLoader] = useState(true);
+
+    /** @type {Array} */
+    const [unredeemedTickets, setUnredeemedTickets] = useState([]);
+
+    /** @type {Array} */
+    const [redeemableTickets, setRedeemabletickets] = useState([]);
 
     /** @type {Array} */
     const [ticketsToRedeem, setTicketsToRedeem] = useState([]);
@@ -113,6 +122,16 @@ export const AppWrapper = ({ Loading, children, user }) => {
 
     }, []);
 
+    // update new tickets
+    useEffect(() => {
+        const newUnredeemedTickets = tickets.filter(ticket => !ticket.redeemTx);
+        setUnredeemedTickets(newUnredeemedTickets);
+
+        const newRedeemableTickets = newUnredeemedTickets.filter(ticket => ticket.issueTx?.height > 0);
+        setRedeemabletickets(newRedeemableTickets);
+    }, [tickets]);
+
+    // update wallet availability upon new tickets
     useEffect(() => {
         if (unredeemedTickets.length > 0) {
             if (!walletUpdateAvailable)
@@ -356,6 +375,7 @@ export const AppWrapper = ({ Loading, children, user }) => {
             user,
             wallet,
             unredeemedTickets,
+            redeemableTickets,
             balance,
             playerNumbers,
             ticketsToRedeem,
