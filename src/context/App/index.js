@@ -71,6 +71,8 @@ export const AppWrapper = ({ Loading, children, user }) => {
     const [affiliate, setAffiliate] = useState({});
     const [externalAid, setExternalAid] = useState(""); 
 
+    const [isFirstTicket, setIsFirstTicket] = useState(true);
+
     useEffect(() => {
         const unlisten = history.listen(() => {
             setLoadingStatus("");
@@ -141,6 +143,19 @@ export const AppWrapper = ({ Loading, children, user }) => {
         }
     }, [unredeemedTickets]);
 
+    // set isFirstTicket false if 2nd ticket has been bought
+    useEffect(() => {
+        if (tickets.length > 1) {
+            if (isFirstTicket) {
+                setIsFirstTicket(false);
+            }
+        } else {
+            if (!isFirstTicket) {
+                setIsFirstTicket(true);
+            }
+        }
+    }, [tickets]);
+    
     const getMinedTicket = async (hash) => {
         const ticketRes = await fetch(`https://lsbx.nmrai.com/v1/ticket/${hash}`, {
             method: "GET",
@@ -297,20 +312,24 @@ export const AppWrapper = ({ Loading, children, user }) => {
             while (!isMined) {
                 console.log("started waiting time");
                 await sleep(timeBetweenPolling);
-                const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
-                console.log("issueTxFromNode", issueTxFromNode);
-                if (!issueTxFromNode) {
-                    notify({ error: "error", message: "Transaction does not exist"});
-                    return false;
-                }
-                isMined = issueTxFromNode.height > -1;
-                console.log("isMined", isMined);
-                if (!isMined) {
-                    notify({ message: "Please wait...", type: "info" });
-                } else {
-                    notify({ message: "You can redeem your ticket now!", type: "success" });
-                    return true;
-                }
+                // if (!polling) {
+                    const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
+                    console.log("issueTxFromNode", issueTxFromNode);
+                    if (!issueTxFromNode) {
+                        notify({ error: "error", message: "Transaction does not exist"});
+                        return false;
+                    }
+                    isMined = issueTxFromNode.height > -1;
+                    console.log("isMined", isMined);
+                    if (!isMined) {
+                        notify({ message: "Please wait...", type: "info" });
+                    } else {
+                        notify({ message: "You can redeem your ticket now!", type: "success" });
+                        return true;
+                    }                    
+                // } else { 
+                //     return;
+                // }
             }
         } else {
             return false;
@@ -380,6 +399,7 @@ export const AppWrapper = ({ Loading, children, user }) => {
             playerNumbers,
             ticketsToRedeem,
             gameTickets,
+            isFirstTicket,
             ticketQuantity,
             affiliate,
             externalAid,
