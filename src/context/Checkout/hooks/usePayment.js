@@ -10,6 +10,7 @@ import sleep from '../../../utils/sleep';
 import { useNotifications } from '../../Notifications';
 import { useCashTab } from '../../CashTab';
 import { useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
 
 export default function usePayment({
     authPayment,
@@ -34,6 +35,7 @@ export default function usePayment({
     const { wallet, addIssueTxs } = useCashTab();
     const { playerNumbers, setLoadingStatus } = useApp();
     const notify = useNotifications();
+    const history = useHistory();
 
     // finalize payment with paymentMetadata (payment token)
     useEffect(() => {
@@ -88,12 +90,13 @@ export default function usePayment({
 
                         // put txs in storage
                         const paymentTxs = payment.transactions.map(raw => TX.fromRaw(raw, null));
+                        console.log("payment useEffect coinsUsed", coinsUsed);
                         const parsedTickets = await addIssueTxs(ticketTxs, coinsUsed, paymentTxs);
                         console.log("parsedTickets", parsedTickets);
                         setTicketsToRedeem(parsedTickets);
 
                         // wait until ticket has been added to storage
-                        await sleep(5000);
+                        // await sleep(5000);
 
                         // pass hash for waiting room to find parsed ticket in storage
                         // history.push("/waitingroom");
@@ -247,9 +250,11 @@ export default function usePayment({
         return rawResponse;
     }
 
-    const capturePayment = async (onSuccess, onError) => {
+    const capturePayment = async () => {
         try {
-            await sleep(8000);
+            await sleep(3000);
+            notify({ type: "info", message: "Please wait..."});
+            await sleep(10000);
 
             let response;
             for (let retries = 0; retries < 3; retries++) {
@@ -298,19 +303,10 @@ export default function usePayment({
             const paymentTxs = capturedPayment.transactions.map(raw => TX.fromRaw(raw, null));
             const parsedTicketTxs = await addIssueTxs(ticketTxs, authPayment.coinsUsed, paymentTxs);
             setTicketsToRedeem(parsedTicketTxs);
-
-            await sleep(5000);
-
-            // history.push('/waitingroom');
-            onSuccess();
-
         } catch (err) {
             console.error(err);
             notify({ message: "AN ERROR OCCURED", type: "error" });
-            await sleep(2000);
-            // return repeatOnboarding();
-            // history.push('/select');            
-            onError();
+            history.push("/");
         }
     }
 

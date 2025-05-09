@@ -1,6 +1,7 @@
 // @ts-check
 
 import { useEffect } from "react";
+import { useHistory } from "react-router-dom";
 import sleep from "../../../utils/sleep";
 import { useNotifications } from "../../Notifications";
 import { useApp } from "../../App";
@@ -17,8 +18,9 @@ export default function useKYC({
     setKycConfig,
     kycAccessToken,
 }) {
+    const history = useHistory();
     const notify = useNotifications();
-    const { setLoadingStatus, user, wallet } = useApp();
+    const { setLoadingStatus, user, setUser, wallet } = useApp();
 
     useEffect(() => {
         if (kycConfig) {
@@ -28,7 +30,7 @@ export default function useKYC({
     }, [kycConfig]);
 
 
-    const setKycResult = async (onError) => {
+    const setKycResult = async () => {
         try {
             await sleep(10000);
             for (let retries = 0; retries < 2; retries++) {
@@ -41,15 +43,15 @@ export default function useKYC({
                     console.log("msg", msg);
 
                     if (msg?.includes("review")) {
-                        onError("KYC NEEDS REVIEW");
+                        history.push("/")
                     }
                     
                     if (msg?.includes("Invalid")) {
-                        onError("INVALID KYV");
+                        history.push("/");
                     } 
                     
                     if (msg?.includes("declined")) {
-                        onError("KYC WAS DECLINED");
+                        history.push("/");
                     }
 
                     if (msg?.includes("cancelled")) {
@@ -68,16 +70,13 @@ export default function useKYC({
             }
         } catch (err) {
             console.error(err);
-            // setLoadingStatus("AN ERROR OCCURED");
-            // await sleep(2000);
-            // return repeatOnboarding();
-            // notify({ message: "AN ERROR OCCURED", type: "error" });
-            // history.push("/");
-            onError("AN ERROR OCCURED");
+            notify({ message: "Error in KYC process", type: "error" });
+            setLoadingStatus(false);
+            history.push("/");
         }
     }
 
-    const handleKYCResult = async (result, onSuccess, onError) => {
+    const handleKYCResult = async (result) => {
         console.log("KYC", result.status);
         const isFiat = paymentProcessor !== "etoken";
         console.log("isFiat", isFiat);
@@ -92,20 +91,22 @@ export default function useKYC({
                     setKycCancelCount(1);
                     break;
                 } else {
-                    setLoadingStatus("KYC WAS CANCELLED AGAIN");
-                    await sleep(2000);
-                    // history.push("/select");
-                    onError("KYC WAS CANCELLED AGAIN");
+                    notify({ type: "error", message:"Kyc was cancelled again"});
+                    await sleep(1000);
+                    history.push("/");
                 }
             case "error":
                 setLoadingStatus("A KYC ERROR OCCURED");
-                return setKycResult(onError);
+                return setKycResult();
 
             // ----Complete workflow-----
             case "auto_approved":
+                const newUser = user;
+                newUser.kyc_status = result.status;
+                setUser(newUser);
                 if (isFiat) {
                     setLoadingStatus("CAPTURE PAYMENT")
-                    return capturePayment(onSuccess, onError);
+                    return capturePayment();
                 } else {
                     setShowKyc(false);
                     break;
@@ -113,16 +114,16 @@ export default function useKYC({
             case "auto_declined":
                 setLoadingStatus("INVALID KYC");
                 if (isFiat)
-                    return setKycResult(onError);
+                    return setKycResult();
                 else {
-                    // return repeatOnboarding();
-                    // notify({ type: 'error', message: 'INVALID KYC' });
-                    // history.push("/");
-                    onError("INVALID KYC");
+                    const newUser = user;
+                    newUser.kyc_status = result.status;
+                    notify({ type: 'error', message: 'Invalid KYC' });
+                    history.push("/");
                 }
             case "needs_review":
                 setLoadingStatus("KYC NEEDS REVIEW")
-                return setKycResult(onError);
+                return setKycResult();
         }
     }
 

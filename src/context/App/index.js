@@ -27,7 +27,7 @@ import { getWalletState } from '../../utils/cashMethods';
 
 export const AppContext = createContext/** @type {import('./types').AppContextValue} */({});
 
-export const AppWrapper = ({ Loading, children, user }) => {
+export const AppWrapper = ({ Loading, children, user, setUser }) => {
     const history = useHistory();
     const { wallet, balance, addMinedTicketToStorage, addRedeemTxToStorage, createWallet, validateMnemonic, forceWalletUpdate } = useCashTab();
     const { getTxBcash, broadcastTx } = useBCH();
@@ -145,7 +145,7 @@ export const AppWrapper = ({ Loading, children, user }) => {
 
     // set isFirstTicket false if 2nd ticket has been bought
     useEffect(() => {
-        if (tickets.length > 1) {
+        if (tickets.length > 0) {
             if (isFirstTicket) {
                 setIsFirstTicket(false);
             }
@@ -415,7 +415,8 @@ export const AppWrapper = ({ Loading, children, user }) => {
             setLoadingStatus,
             setPlayerNumbers,
             setTicketsToRedeem,
-            setGameTickets
+            setGameTickets,
+            setUser,
         }}>
             {children}
             {loadingStatus && <Loading>{loadingStatus}</Loading>}
@@ -426,6 +427,7 @@ export const AppWrapper = ({ Loading, children, user }) => {
 export const AppProvider = ({ Loading, children }) => {
 
     const { wallet } = useCashTab();
+    const address = wallet.Path1899.cashAddress;
     const [modal, modalHolder] = Modal.useModal();
 
     const [user, setUser] = useState({});
@@ -553,7 +555,7 @@ export const AppProvider = ({ Loading, children }) => {
         }
 
         getUser();
-    }, [wallet]);
+    }, [address]);
 
     if (isLoading) {
         return <>{modalHolder}<Loading>Loading Wallet...</Loading></>;
@@ -568,7 +570,7 @@ export const AppProvider = ({ Loading, children }) => {
     }
 
     return (
-        <AppWrapper user={user} Loading={Loading}>
+        <AppWrapper user={user} setUser={setUser} Loading={Loading}>
             {children}
         </AppWrapper>
     )
