@@ -9,8 +9,6 @@ import { useApp } from '../../App';
 import sleep from '../../../utils/sleep';
 import { useNotifications } from '../../Notifications';
 import { useCashTab } from '../../CashTab';
-import { useEffect } from 'react';
-import { useHistory } from 'react-router-dom';
 
 export default function usePayment({
     authPayment,
@@ -35,81 +33,71 @@ export default function usePayment({
     const { wallet, addIssueTxs } = useCashTab();
     const { playerNumbers, setLoadingStatus } = useApp();
     const notify = useNotifications();
-    const history = useHistory();
 
-    // finalize payment with paymentMetadata (payment token)
-    useEffect(() => {
-        (async () => {
-            try {
-                if (paymentMetadata && paymentRequest && !ticketIssued) {
-                    setLoadingStatus("PROCESSING");
-                    const type = paymentProcessor === "etoken" ? paymentProcessor : "fiat";
-                    const authonly = type === "fiat" && !isKYCed;
-                    console.log("authonly", authonly);
-                    const { payment, kycToken, coinsUsed } = await buildPayment(
-                        type,
-                        authonly
-                    );
-                    console.log("init payment", payment.toRaw().toString("hex"))
-                    setKycAccessToken(kycToken);
-                    // setLoadingStatus(false);
-                    const rawPaymentRes = await fetch("https://lsbx.nmrai.com/v1/pay", {
-                        method: "POST",
-                        headers: new Headers({
-                            'Content-Type': `application/${type}-payment`
-                        }),
-                        signal: AbortSignal.timeout(20000),
-                        body: payment.toRaw()
-                    });
+    const processPayment = async (onSuccess, paymentMetadata, prForEtokenPayment) => {
+        const pr = prForEtokenPayment || paymentRequest;
+        if (!pr) {
+            throw new Error("Payment Request is missing");
+        }
+    
+        setLoadingStatus("PROCESSING");
+        const type = paymentProcessor === "etoken" ? paymentProcessor : "fiat";
+        const authonly = type === "fiat" && !isKYCed;
+        console.log("authonly", authonly);
+    
+        const { payment, kycToken, coinsUsed } = await buildPayment(
+            type,
+            authonly,
+            paymentMetadata,
+            pr,
+        );
+        console.log("init payment", payment.toRaw().toString("hex"))
+        setKycAccessToken(kycToken);
+        // setLoadingStatus(false);
+        const rawPaymentRes = await fetch("https://lsbx.nmrai.com/v1/pay", {
+            method: "POST",
+            headers: new Headers({
+                'Content-Type': `application/${type}-payment`
+            }),
+            signal: AbortSignal.timeout(20000),
+            body: payment.toRaw()
+        });
 
-                    if (rawPaymentRes.status !== 200) {
-                        const message = await rawPaymentRes.text();
-                        throw new Error(message);
-                    }
+        if (rawPaymentRes.status !== 200) {
+            const message = await rawPaymentRes.text();
+            throw new Error(message);
+        }
 
-                    if (type === "fiat" && authonly) {
-                        const response = await rawPaymentRes.json();
-                        console.log("auth res", response);
-                        setAuthPayment({
-                            rawPayment: payment.toRaw(),
-                            coinsUsed
-                        });
-                        setShowKyc(true);
-                        setLoadingStatus(false);
-                    } else {
-                        const paymentResArrayBuf = await rawPaymentRes.arrayBuffer();
-                        const response = Buffer.from(paymentResArrayBuf);
+        if (type === "fiat" && authonly) {
+            const response = await rawPaymentRes.json();
+            console.log("auth res", response);
+            setAuthPayment({
+                rawPayment: payment.toRaw(),
+                coinsUsed
+            });
+            setShowKyc(true);
+            setLoadingStatus(false);
+        } else {
+            const paymentResArrayBuf = await rawPaymentRes.arrayBuffer();
+            const response = Buffer.from(paymentResArrayBuf);
 
-                        const ack = PaymentACK.fromRaw(response, null);
-                        console.log(ack.memo);
-                        const rawTransactions = ack.payment.transactions;
-                        const ticketTxs = rawTransactions.map(r => TX.fromRaw(r, null));
-                        console.log(ticketTxs.map(tx => tx.toJSON()));
+            const ack = PaymentACK.fromRaw(response, null);
+            console.log(ack.memo);
+            const rawTransactions = ack.payment.transactions;
+            const ticketTxs = rawTransactions.map(r => TX.fromRaw(r, null));
+            console.log(ticketTxs.map(tx => tx.toJSON()));
 
-                        setTicketIssued(true);
+            setTicketIssued(true);
 
-                        // put txs in storage
-                        const paymentTxs = payment.transactions.map(raw => TX.fromRaw(raw, null));
-                        console.log("payment useEffect coinsUsed", coinsUsed);
-                        const parsedTickets = await addIssueTxs(ticketTxs, coinsUsed, paymentTxs);
-                        console.log("parsedTickets", parsedTickets);
-                        setTicketsToRedeem(parsedTickets);
-
-                        // wait until ticket has been added to storage
-                        // await sleep(5000);
-
-                        // pass hash for waiting room to find parsed ticket in storage
-                        // history.push("/waitingroom");
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-                setLoadingStatus("AN ERROR OCCURED");
-                await sleep(3000);
-                // history.push("/select");
-            }
-        })();
-    }, [paymentMetadata, paymentRequest])
+            // put txs in storage
+            const paymentTxs = payment.transactions.map(raw => TX.fromRaw(raw, null));
+            console.log("processPayment() coinsUsed", coinsUsed);
+            const parsedTickets = await addIssueTxs(ticketTxs, coinsUsed, paymentTxs);
+            console.log("processPayment() parsedTickets", parsedTickets);
+            setTicketsToRedeem(parsedTickets);
+            onSuccess(parsedTickets);
+        }
+    }
 
     // initialize payment request
     const getPaymentRequest = async () => {
@@ -134,14 +122,18 @@ export default function usePayment({
 
         console.log("pr", pr);
         setPaymentRequest(pr);
+
+        return pr;
     };
 
     const buildPayment = async (
         type,
         authonly,
+        paymentMetadata,
+        prFromProcessing
     ) => {
         // get message to sign
-        const merchantData = paymentRequest.paymentDetails.getData('json');
+        const merchantData = prFromProcessing.paymentDetails.getData('json');
         console.log("merchant data", merchantData);
         const paymentDataBuf = Buffer.from(merchantData.paymentdata, 'hex');
         const br = bio.read(paymentDataBuf);
@@ -156,7 +148,7 @@ export default function usePayment({
         const playerNumbersBuf = Buffer.from(playerNumbers, 'hex');
         bw.writeBytes(playerNumbersBuf);
         const payment = new Payment({
-            memo: paymentRequest.paymentDetails.memo,
+            memo: prFromProcessing.paymentDetails.memo,
         });
 
         const coinsUsed = [];
@@ -172,7 +164,7 @@ export default function usePayment({
             // construct tx
             // @ts-ignore
             const tx = new MTX();
-            const prOutputs = paymentRequest.paymentDetails.outputs;
+            const prOutputs = prFromProcessing.paymentDetails.outputs;
             for (let i = 0; i < prOutputs.length; i++) {
                 tx.addOutput(Script.fromRaw(prOutputs[i].script, null), prOutputs[i].value);
             }
@@ -250,64 +242,63 @@ export default function usePayment({
         return rawResponse;
     }
 
-    const capturePayment = async () => {
-        try {
-            await sleep(3000);
-            notify({ type: "info", message: "Please wait..."});
-            await sleep(10000);
+    const capturePayment = async (onSuccess) => {
+        await sleep(3000);
+        notify({ type: "info", message: "Please wait..."});
+        await sleep(10000);
 
-            let response;
-            for (let retries = 0; retries < 3; retries++) {
-                console.log("capture payment attempt", retries);
-                const rawPaymentRes = await sendPayment(authPayment.rawPayment);
+        let response;
+        for (let retries = 0; retries < 3; retries++) {
+            console.log("capture payment attempt", retries);
+            const rawPaymentRes = await sendPayment(authPayment.rawPayment);
 
-                if (rawPaymentRes.status == 200) {
-                    const paymentResArrayBuf = await rawPaymentRes.arrayBuffer();
-                    response = Buffer.from(paymentResArrayBuf);
-                    break;
-                } else if (rawPaymentRes.status == 400) {
-                    const msg = await rawPaymentRes.text();
-                    console.log("msg", msg);
-                    console.log("rawPaymentRes", rawPaymentRes);
+            if (rawPaymentRes.status == 200) {
+                const paymentResArrayBuf = await rawPaymentRes.arrayBuffer();
+                response = Buffer.from(paymentResArrayBuf);
+                break;
+            } else if (rawPaymentRes.status == 400) {
+                const msg = await rawPaymentRes.text();
+                console.log("msg", msg);
+                console.log("rawPaymentRes", rawPaymentRes);
 
-                    if (retries < 2) {
-                        // retry 3 times in total
-                        await sleep(3000)
-                        continue;
-                    } else {
-                        // too many retries
-                        throw new Error(msg);
-                    }
+                if (retries < 2) {
+                    // retry 3 times in total
+                    await sleep(3000)
+                    continue;
                 } else {
-                    const msg = await rawPaymentRes.text();
-                    throw new Error(msg);
+                    // too many retries
+                    console.error("Payment API Error: ", msg);
+                    throw new Error("API Error");
                 }
+            } else {
+                const msg = await rawPaymentRes.text();
+                console.log("Payment API Error: ", msg);
+                throw new Error("API Error");
             }
-
-            console.log("response", response);
-
-            if (!response) {
-                throw new Error('Response is undefined');
-            }
-            const ack = PaymentACK.fromRaw(response, null);
-            console.log(ack.memo);
-            const rawTransactions = ack.payment.transactions;
-            const ticketTxs = rawTransactions.map(r => TX.fromRaw(r, null));
-            console.log(ticketTxs.map(tx => tx.toJSON()));
-
-            setTicketIssued(true);
-            notify({ type: 'success', message: 'Successful Purchase' });
-
-            // put txs in storage
-            const capturedPayment = Payment.fromRaw(authPayment.rawPayment, null);
-            const paymentTxs = capturedPayment.transactions.map(raw => TX.fromRaw(raw, null));
-            const parsedTicketTxs = await addIssueTxs(ticketTxs, authPayment.coinsUsed, paymentTxs);
-            setTicketsToRedeem(parsedTicketTxs);
-        } catch (err) {
-            console.error(err);
-            notify({ message: "AN ERROR OCCURED", type: "error" });
-            history.push("/");
         }
+
+        console.log("response", response);
+
+        if (!response) {
+            console.log("Payment API Error: ", "payment buffer is undefined");
+            throw new Error('Payment API Error');
+        }
+        const ack = PaymentACK.fromRaw(response, null);
+        console.log(ack.memo);
+        const rawTransactions = ack.payment.transactions;
+        const ticketTxs = rawTransactions.map(r => TX.fromRaw(r, null));
+        console.log(ticketTxs.map(tx => tx.toJSON()));
+
+        setTicketIssued(true);
+        notify({ type: 'success', message: 'Successful Purchase' });
+
+        // put txs in storage
+        const capturedPayment = Payment.fromRaw(authPayment.rawPayment, null);
+        const paymentTxs = capturedPayment.transactions.map(raw => TX.fromRaw(raw, null));
+        const parsedTicketTxs = await addIssueTxs(ticketTxs, authPayment.coinsUsed, paymentTxs);
+        setTicketsToRedeem(parsedTicketTxs);
+
+        onSuccess("Successful Purchase");
     }
 
     const initiatePayment = (e) => {
@@ -322,52 +313,68 @@ export default function usePayment({
             console.error("CollectJS unavailable")
     }
 
-    const handleEtokenPayment = async (e) => {
-        if (e)
-            e.preventDefault();
-        setLoadingStatus("BUILDING TRANSACTION");
-        await sleep(1000);
-        setPaymentMetadata(true);
+    const handleEtokenPayment = async (pr, onSuccess, onError) => {
+        try {
+            setLoadingStatus("BUILDING TRANSACTION");
+            await sleep(1000);
+            processPayment(onSuccess, true, pr);
+        } catch(err) {
+            console.error(err);
+            onError(err);
+        }
     }
 
     const handleNmiResult = async (result) => {
-        console.log("payment token", result.token);
-        const paymentMetadata = result.token;
-        setPaymentMetadata(paymentMetadata);
+        try {
+            console.log("payment token", result.token);
+            const paymentMetadata = result.token;
+            const handleSuccess = () => {
+                notify({type: "success", message: "Successful Purchase!"});
+            }
+            processPayment(handleSuccess, paymentMetadata);
+        } catch(err) {
+            console.error(err);
+            notify({type: "", message: "Payment Processor Error"});
+        }
+
     }
 
-    const handleConfirmation = async () => {
-        // verify quantity input
-        const isNumberInput = /[0-9]/.test(ticketQuantity);
-        if (!isNumberInput) {
-            setTicketQtyError("Quantity must be a number");
-            return;
+    const handlePayment = async (onSuccess, onError) => {
+        try {
+            // verify quantity input
+            const isNumberInput = /[0-9]/.test(ticketQuantity);
+            if (!isNumberInput) {
+                setTicketQtyError("Quantity must be a number");
+                return;
+            }
+
+            // verify sufficient balance
+            const isEtoken = paymentProcessor === "etoken";
+            const sufficientBalance = Number(ticketQuantity) <= maxEtokenTicketQuantity;
+            if (isEtoken && !sufficientBalance) {
+                if (maxEtokenTicketQuantity === 1)
+                    setTicketQtyError(`You can only afford ${maxEtokenTicketQuantity} Ticket with eToken`);
+                else
+                    setTicketQtyError(`You can only afford ${maxEtokenTicketQuantity} Tickets with eToken`);
+                return;
+            }
+            setTicketQtyError(false);
+
+            const pr = await getPaymentRequest();
+
+            if (!isEtoken)
+                setShowPaymentForm(true);
+
+            // kyc the user if first payment if payment is with etoken
+            if (isEtoken && !isKYCed) {
+                setLoadingStatus("LOADING KYC");
+                setShowKyc(true);
+            } else if (isEtoken)
+                return handleEtokenPayment(pr, onSuccess, onError);            
+        } catch(err) {
+            onError(err);
+            console.error(err);
         }
-
-        // verify sufficient balance
-        const isEtoken = paymentProcessor === "etoken";
-        const sufficientBalance = Number(ticketQuantity) <= maxEtokenTicketQuantity;
-        if (isEtoken && !sufficientBalance) {
-            if (maxEtokenTicketQuantity === 1)
-                setTicketQtyError(`You can only afford ${maxEtokenTicketQuantity} Ticket with eToken`);
-            else
-                setTicketQtyError(`You can only afford ${maxEtokenTicketQuantity} Tickets with eToken`);
-            return;
-        }
-        setTicketQtyError(false);
-
-        await getPaymentRequest();
-
-        if (!isEtoken)
-            setShowPaymentForm(true);
-
-        // kyc the user if first payment is with etoken
-        if (isEtoken && !isKYCed) {
-            setLoadingStatus("LOADING KYC");
-            setShowKyc(true);
-            // return handleEtokenPayment();
-        } else if (isEtoken)
-            return handleEtokenPayment();
     }
 
     return {
@@ -376,8 +383,7 @@ export default function usePayment({
         sendPayment,
         capturePayment,
         initiatePayment,
-        handleEtokenPayment,
         handleNmiResult,
-        handleConfirmation
+        handlePayment
     }
 }

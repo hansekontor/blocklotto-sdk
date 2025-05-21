@@ -5,6 +5,7 @@ import { useHistory } from "react-router-dom";
 import sleep from "../../../utils/sleep";
 import { useNotifications } from "../../Notifications";
 import { useApp } from "../../App";
+import { kycWorkflowId } from "../../../constants/kyc"; 
 
 export default function useKYC({
     authPayment,
@@ -23,60 +24,60 @@ export default function useKYC({
     const { setLoadingStatus, user, setUser, wallet } = useApp();
 
     useEffect(() => {
-        if (kycConfig) {
+        const kycRequired = !user.kyc_status?.includes("approved");
+        if (kycAccessToken && kycRequired) {
+            const transactionId = wallet.Path1899.publicKey;
+
             // @ts-ignore
-            window.HyperKYCModule.launch(kycConfig, handleKYCResult);
+            const config = new window.HyperKycConfig(kycAccessToken, kycWorkflowId, transactionId);
+            setKycConfig(config);
         }
-    }, [kycConfig]);
+    }, [kycAccessToken])
 
 
     const setKycResult = async () => {
-        try {
-            await sleep(10000);
-            for (let retries = 0; retries < 2; retries++) {
-                console.log("set kyc result, attempt", retries)
-                const rawPaymentRes = await sendPayment(authPayment.rawPayment);
+        await sleep(10000);
+        for (let retries = 0; retries < 2; retries++) {
+            console.log("set kyc result, attempt", retries)
+            const rawPaymentRes = await sendPayment(authPayment.rawPayment);
 
-                // status 400 is expected with non approved kyc
-                if (rawPaymentRes.status == 400) {
-                    const msg = await rawPaymentRes.text();
-                    console.log("msg", msg);
+            // status 400 is expected with non approved kyc
+            if (rawPaymentRes.status == 400) {
+                const msg = await rawPaymentRes.text();
+                console.log("msg", msg);
 
-                    if (msg?.includes("review")) {
-                        history.push("/")
-                    }
-                    
-                    if (msg?.includes("Invalid")) {
-                        history.push("/");
-                    } 
-                    
-                    if (msg?.includes("declined")) {
-                        history.push("/");
-                    }
+                if (msg?.includes("review")) {
+                    throw new Error("KYC needs review");
+                    // history.push("/")
+                }
+                
+                if (msg?.includes("Invalid")) {
+                    throw new Error("Invalid KYC");
+                    // history.push("/");
+                } 
+                
+                if (msg?.includes("declined")) {
+                    throw new Error("KYC was declined");
+                    // history.push("/");
+                }
 
-                    if (msg?.includes("cancelled")) {
-                        setLoadingStatus(false);
-                        return;
-                    }
+                if (msg?.includes("cancelled")) {
+                    setLoadingStatus(false);
+                    return;
+                }
 
-                    if (retries < 1) {
-                        await sleep(3000)
-                        continue;
-                    } else {
-                        // too many retries
-                        throw new Error(msg);
-                    }
+                if (retries < 1) {
+                    await sleep(3000)
+                    continue;
+                } else {
+                    // too many retries
+                    throw new Error("KYC API Error");
                 }
             }
-        } catch (err) {
-            console.error(err);
-            notify({ message: "Error in KYC process", type: "error" });
-            setLoadingStatus(false);
-            history.push("/");
         }
     }
 
-    const handleKYCResult = async (result) => {
+    const handleKYCResult = async (result, onSuccess) => {
         console.log("KYC", result.status);
         const isFiat = paymentProcessor !== "etoken";
         console.log("isFiat", isFiat);
@@ -91,9 +92,7 @@ export default function useKYC({
                     setKycCancelCount(1);
                     break;
                 } else {
-                    notify({ type: "error", message:"Kyc was cancelled again"});
-                    await sleep(1000);
-                    history.push("/");
+                    throw new Error("Kyc was cancelled repeatedly")
                 }
             case "error":
                 setLoadingStatus("A KYC ERROR OCCURED");
@@ -105,8 +104,8 @@ export default function useKYC({
                 newUser.kyc_status = result.status;
                 setUser(newUser);
                 if (isFiat) {
-                    setLoadingStatus("CAPTURE PAYMENT")
-                    return capturePayment();
+                    setLoadingStatus("CAPTURE PAYMENT");
+                    return capturePayment(onSuccess);
                 } else {
                     setShowKyc(false);
                     break;
@@ -118,8 +117,7 @@ export default function useKYC({
                 else {
                     const newUser = user;
                     newUser.kyc_status = result.status;
-                    notify({ type: 'error', message: 'Invalid KYC' });
-                    history.push("/");
+                    throw new Error("Invalid KYC");
                 }
             case "needs_review":
                 setLoadingStatus("KYC NEEDS REVIEW")
@@ -127,20 +125,39 @@ export default function useKYC({
         }
     }
 
-    const handleKYC = async (e) => {
+    const handleKYCandCapture = async (e, onSuccess, onError) => {
         e.preventDefault();
 
-        const workflowId = "workflow_a93TCBh";
-        const transactionId = wallet.Path1899.publicKey;
-        // @ts-ignore
-        const config = new window.HyperKycConfig(kycAccessToken, workflowId, transactionId);
+        try {
+            // throw error if kyc has already been processed
+            const previousKycStatus = user.kyc_status;
+            const kycAllowed = !previousKycStatus?.includes("approved") || !previousKycStatus?.includes("declined");
+            if (!kycAllowed) {
+                throw new Error("Repeated KYC");
+            }            
 
-        setKycConfig(config);
+            // throw error if config (and kycAccessToken and payment auth) is missing
+            if (!kycConfig) {
+                throw new Error("Missing KYC config: Payment Authorization required");
+            }
+
+            // @ts-ignore
+            window.HyperKYCModule.launch(
+                kycConfig, 
+                (result) => handleKYCResult(result, onSuccess)
+            )
+        } catch(err) {
+            console.error(err);
+            onError(err);
+        }
+
+
+
     }
 
     return {
         setKycResult,
         handleKYCResult,
-        handleKYC,
+        handleKYCandCapture,
     }
 }

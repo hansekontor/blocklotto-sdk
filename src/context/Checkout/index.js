@@ -64,14 +64,11 @@ export const CheckoutProvider = ({ children }) => {
     useInitialLoad(tickets, setHasEmail, setIsKYCed);
 
     const {
-        getPaymentRequest,
-        buildPayment,
         sendPayment,
         capturePayment,
         initiatePayment,
-        handleEtokenPayment,
         handleNmiResult,
-        handleConfirmation,
+        handlePayment,
     } = usePayment({
         authPayment,
         ticketQuantity,
@@ -94,9 +91,7 @@ export const CheckoutProvider = ({ children }) => {
     })
 
     const {
-        setKycResult,
-        handleKYCResult,
-        handleKYC
+        handleKYCandCapture
     } = useKYC({
         authPayment,
         kycConfig,
@@ -134,8 +129,8 @@ export const CheckoutProvider = ({ children }) => {
             maxEtokenTicketQuantity,
             ticketPrice,
             handleAgree,
-            handleKYC,
-            handleConfirmation,
+            handleKYCandCapture,
+            handlePayment,
             handleSubmitEmail,
             handlePaymentMethod,
             initiatePayment,
