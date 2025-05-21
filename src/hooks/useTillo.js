@@ -135,6 +135,10 @@ export default function useTillo() {
       // console.log("invoiceRes", invoiceRes);
 
       // add api error handling
+      if (invoiceRes.status !== 200) {                
+        const msg = await rawPaymentRes.text();
+        throw new Error(msg);
+      }
 
       const invoiceArrayBuffer = await invoiceRes.arrayBuffer();
       const invoiceBuf = Buffer.from(invoiceArrayBuffer);
