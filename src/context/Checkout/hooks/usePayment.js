@@ -31,7 +31,7 @@ export default function usePayment({
     setTicketsToRedeem
 }) {
     const { wallet, addIssueTxs } = useCashTab();
-    const { playerNumbers, setLoadingStatus } = useApp();
+    const { playerNumbers, setLoadingStatus, externalAid } = useApp();
     const notify = useNotifications();
 
     const processPayment = async (onSuccess, paymentMetadata, prForEtokenPayment) => {
@@ -102,6 +102,14 @@ export default function usePayment({
     // initialize payment request
     const getPaymentRequest = async () => {
         console.log("get invoice for qnt", ticketQuantity);
+        const merchantData = {
+            quantity: ticketQuantity, 
+        };
+
+        if (externalAid.length > 0) {
+            merchantData["affiliatepubkey"] = externalAid;
+        }
+
         const res = await fetch("https://lsbx.nmrai.com/v1/invoice", {
             method: "POST",
             headers: new Headers({
@@ -110,9 +118,7 @@ export default function usePayment({
             }),
             mode: "cors",
             signal: AbortSignal.timeout(20000),
-            body: JSON.stringify({
-                quantity: ticketQuantity
-            }),
+            body: JSON.stringify(merchantData),
         });
         // console.log("res", res);
         const invoiceRes = await res.arrayBuffer();
