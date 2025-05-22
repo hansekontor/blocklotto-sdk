@@ -27,7 +27,6 @@
     "@rollup/plugin-terser": "^0.4.4",
     "antd": "^5.24.8",
     "b70-checkout": "github:hansekontor/b70-checkout",
-    "bcurl": "^0.2.1",
     "bignumber.js": "^9.3.0",
     "bufio": "^1.2.3",
     "dotenv": "^16.4.4",
