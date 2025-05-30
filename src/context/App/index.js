@@ -65,7 +65,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
     /** @type {[number, (value: number) => void]} */
     const [ticketQuantity, setTicketQuantity] = useState(1);
 
-    const [protection, setProtection] = useState(true);
+    const [protection, setProtection] = useState(false);
     const [walletUpdateAvailable, setWalletUpdateAvailable] = useState(false);
 
     const [affiliate, setAffiliate] = useState({});
