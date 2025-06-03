@@ -381,11 +381,15 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
     }
 
     const updateWallet = async () => {
-        setLoadingStatus("LOADING WALLET");
-        await forceWalletUpdate();
-        await sleep(3000);
-        setWalletUpdateAvailable(false);
-        setLoadingStatus(false);
+        if (walletUpdateAvailable) {
+            setLoadingStatus("LOADING WALLET");
+            await forceWalletUpdate();
+            await sleep(3000);
+            setWalletUpdateAvailable(false);
+            setLoadingStatus(false);            
+        } else {
+            notify({ type: "error", message: "Wallet Update unavailable"});
+        }
     }
 
     return (
@@ -416,7 +420,6 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             setPlayerNumbers,
             setTicketsToRedeem,
             setGameTickets,
-            setUser,
         }}>
             {children}
             {loadingStatus && <Loading>{loadingStatus}</Loading>}
