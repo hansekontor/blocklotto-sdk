@@ -83,7 +83,6 @@ export function CashoutProvider({ children }) {
                 cashoutMethod,
                 minCashoutAmount,
                 maxCashoutAmount,
-                checkBalance,
                 tilloStage,
                 giftcardAmount,
                 giftcardLink,
@@ -92,12 +91,12 @@ export function CashoutProvider({ children }) {
                 tilloBrands,
                 tilloSelection,
                 brandData, 
-                setGiftcardAmount,
-                setGiftcardLink,
+                checkBalance,
                 filterTilloBrands,
                 handleTilloBrandChange,
-                getGiftcard,
                 getGiftcardLink,
+                setGiftcardAmount,
+                setGiftcardLink,
                 setTilloStage,
             }}
         >
