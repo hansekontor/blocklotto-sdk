@@ -34,8 +34,8 @@ export default function useTermsAndEmail({
         setFirstRendering(false);
     }
 
-    const handleSubmitEmail = async (e) => {
-        console.log("handleSubmitEmail called");
+    const handleSubmitAccount = async (e) => {
+        console.log("handleSubmitAccount called");
         e.preventDefault();
 
         const emailInput = e.target.email.value;
@@ -87,6 +87,6 @@ export default function useTermsAndEmail({
 
     return {
         handleAgree,
-        handleSubmitEmail,
+        handleSubmitAccount,
     }
 }

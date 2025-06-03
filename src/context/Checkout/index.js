@@ -105,7 +105,7 @@ export const CheckoutProvider = ({ children }) => {
         setKycConfig,
     })
 
-    const { handleAgree, handleSubmitEmail } = useTermsAndEmail({
+    const { handleAgree, handleSubmitAccount } = useTermsAndEmail({
         hasAgreed,
         setHasAgreed,
         setFirstRendering,
@@ -116,7 +116,6 @@ export const CheckoutProvider = ({ children }) => {
 
     return (
         <CheckoutContext.Provider value={{
-            isFirstRendering,
             hasAgreed,
             hasEmail,
             showPaymentForm,
@@ -131,12 +130,12 @@ export const CheckoutProvider = ({ children }) => {
             handleAgree,
             handleKYCandCapture,
             handlePayment,
-            handleSubmitEmail,
+            handleSubmitAccount,
             handlePaymentMethod,
             initiatePayment,
+            handleNmiResult,
             setTicketQuantity,
             setShowPaymentForm,
-            handleNmiResult,
         }}>
             {children}
         </CheckoutContext.Provider>
