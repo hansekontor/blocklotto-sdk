@@ -264,7 +264,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
                 console.log('ptx id', ptx.txid())
 
                 const redeemData = {
-                    actualPayoutNum: U64.fromBE(actualPayoutBE).toNumber(),
+                    payoutAmountNum: U64.fromBE(actualPayoutBE).toNumber(),
                     tier,
                     opponentNumbers,
                     resultingNumbers
