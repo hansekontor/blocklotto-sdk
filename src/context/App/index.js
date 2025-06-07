@@ -414,6 +414,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             importWallet,
             validateMnemonic,
             updateWallet,
+            setUser,
             setTicketQuantity,
             setProtection,
             setLoadingStatus,
