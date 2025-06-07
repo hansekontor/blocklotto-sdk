@@ -30,10 +30,14 @@ export default class TicketHistory {
     
     async addTicketsFromNode(txs) {
         const matchedTickets = this.matchTickets(txs);
-        const sortedTickets = matchedTickets.sort(this.compareTickets);
-        const parsedTickets = await this.parseTickets(sortedTickets);
+        if (matchedTickets.length > 0) {
+            const sortedTickets = matchedTickets.sort(this.compareTickets);
+            const parsedTickets = await this.parseTickets(sortedTickets);
 
-        this.tickets = parsedTickets;
+            this.tickets = parsedTickets;            
+        } else {
+            this.tickets = [];
+        }
     }
 
     async addTicketsFromIssuance(txs) {
