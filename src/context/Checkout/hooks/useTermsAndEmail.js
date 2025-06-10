@@ -16,7 +16,7 @@ export default function useTermsAndEmail({
     setHasEmail, 
 }) {
     const { forceWalletUpdate, wallet } = useCashTab();
-    const { user } = useApp();
+    const { user, setEmail } = useApp();
 
     useEffect(() => {
         (async () => {
@@ -55,7 +55,7 @@ export default function useTermsAndEmail({
 
         const buyerKeyring = KeyRing.fromSecret(wallet.Path1899.fundingWif, null);
 
-        console.log("email", emailInput);
+        console.log("emailInput", emailInput);
         console.log("user.access", user.access);
         const msg = Buffer.from(emailInput, 'utf-8');
         const sig = buyerKeyring.sign(SHA256.digest(msg));
@@ -81,8 +81,10 @@ export default function useTermsAndEmail({
         // forward based on response
         const userResJson = await userRes.json();
         console.log("userResJson", userResJson);
-        if (userRes.status === 200)
+        if (userRes.status === 200) {
+            setEmail(emailInput);
             setHasEmail(true);
+        }
     }
 
     return {

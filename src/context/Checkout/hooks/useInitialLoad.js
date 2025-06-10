@@ -14,11 +14,11 @@ import { useApp } from "../../App";
  * @param {(val: boolean) => void} setIsKYCed - Setter to update `isKYCed` state.
  */
 export default function useInitialLoad(tickets, setHasEmail, setIsKYCed) {
-    const { setLoadingStatus, user } = useApp();
+    const { setLoadingStatus, user, email } = useApp();
 
     useEffect(() => {
         const initialStates = async () => {
-            if (user.email) setHasEmail(true);
+            if (user.email || email) setHasEmail(true);
 
             const isDbApproved = user.kyc_status?.includes("approved");
             const hasTickets = tickets.length > 0;

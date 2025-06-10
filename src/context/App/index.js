@@ -72,6 +72,8 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
     const [externalAid, setExternalAid] = useState(""); 
 
     const [isFirstTicket, setIsFirstTicket] = useState(true);
+    
+    const [email, setEmail] = useState(false);
 
     useEffect(() => {
         const unlisten = history.listen(() => {
@@ -155,7 +157,19 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             }
         }
     }, [tickets]);
-    
+
+    // update email state from user
+    useEffect(() => {
+        console.log("useEffect email")
+        const updateEmail = user.email && !email;
+        console.log("updateEmail", updateEmail);
+        console.log("user.email", user.email);
+        console.log("email", email);
+        if (updateEmail) {
+            setEmail(user.email);
+        }
+    }, [user])    
+
     const getMinedTicket = async (hash) => {
         const ticketRes = await fetch(`https://lsbx.nmrai.com/v1/ticket/${hash}`, {
             method: "GET",
@@ -273,6 +287,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
 
                 const redeemHash = ptx.txid();
 
+                // remove redeemed ticket from ticketsToRedeem
                 const outstandingTickets = ticketsToRedeem;
                 outstandingTickets.shift();
                 setTicketsToRedeem(outstandingTickets);
@@ -336,13 +351,13 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         }
     }
 
-    const changeEmail = async (email) => {
+    const changeEmail = async (emailInput) => {
         const keyring = KeyRing.fromSecret(wallet.Path1899.fundingWif);
-		const msg = Buffer.from(email, 'utf-8');
+		const msg = Buffer.from(emailInput, 'utf-8');
 		const sig = keyring.sign(SHA256.digest(msg));
 
 		const json = {
-			email: email, 
+			email: emailInput, 
 			pubkey: wallet.Path1899.publicKey,
 			signature: sig.toString('hex'),			
 		};
@@ -361,6 +376,8 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
 		const userResJson = await userRes.json();
 		console.log("userResJson", userResJson);
 		if (userRes.status === 200) {
+            console.log("blocklotto call setEmail() with", emailInput)
+            setEmail(emailInput);
             notify({
                 type: "success",
                 message: "Email has been changed"
@@ -396,6 +413,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         <AppContext.Provider value={{
             protection,
             user,
+            email,
             wallet,
             unredeemedTickets,
             redeemableTickets,
@@ -415,6 +433,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             validateMnemonic,
             updateWallet,
             setUser,
+            setEmail,
             setTicketQuantity,
             setProtection,
             setLoadingStatus,
