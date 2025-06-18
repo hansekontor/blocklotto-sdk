@@ -35,11 +35,11 @@ export default function useKYC({
     }, [kycAccessToken])
 
 
-    const setKycResult = async () => {
-        await sleep(10000);
+    const setKycResult = async (onError) => {
+        await sleep(13000);
         for (let retries = 0; retries < 2; retries++) {
             console.log("set kyc result, attempt", retries)
-            const rawPaymentRes = await sendPayment(authPayment.rawPayment);
+            const rawPaymentRes = await sendPayment(authPayment.rawPayment, onError);
 
             // status 400 is expected with non approved kyc
             if (rawPaymentRes.status == 400) {
@@ -47,18 +47,15 @@ export default function useKYC({
                 console.log("msg", msg);
 
                 if (msg?.includes("review")) {
-                    throw new Error("KYC needs review");
-                    // history.push("/")
+                    return onError("KYC needs review");
                 }
                 
                 if (msg?.includes("Invalid")) {
-                    throw new Error("Invalid KYC");
-                    // history.push("/");
+                    return onError("Invalid KYC");
                 } 
                 
                 if (msg?.includes("declined")) {
-                    throw new Error("KYC was declined");
-                    // history.push("/");
+                    return onError("KYC was declined");
                 }
 
                 if (msg?.includes("cancelled")) {
@@ -67,61 +64,65 @@ export default function useKYC({
                 }
 
                 if (retries < 1) {
-                    await sleep(3000)
+                    await sleep(5000)
                     continue;
                 } else {
                     // too many retries
-                    throw new Error("KYC API Error");
+                    return onError("KYC API Error");
                 }
             }
         }
     }
 
-    const handleKYCResult = async (result, onSuccess) => {
-        console.log("KYC", result.status);
-        const isFiat = paymentProcessor !== "etoken";
-        console.log("isFiat", isFiat);
-        switch (result.status) {
+    const handleKYCResult = async (result, onSuccess, onError) => {
+        try {
+            console.log("KYC", result.status);
+            const isFiat = paymentProcessor !== "etoken";
+            console.log("isFiat", isFiat);
+            switch (result.status) {
 
-            // ----Incomplete workflow-----
-            case "user_cancelled":
-                if (kycCancelCount == 0 && !user.kyc_status?.includes("cancelled")) {
-                    console.log("increase counter");
-                    notify({ type: 'error', message: 'KYC was cancelled, try again' });
+                // ----Incomplete workflow-----
+                case "user_cancelled":
+                    if (kycCancelCount == 0 && !user.kyc_status?.includes("cancelled")) {
+                        console.log("increase counter");
+                        notify({ type: 'error', message: 'KYC was cancelled, try again' });
 
-                    setKycCancelCount(1);
-                    break;
-                } else {
-                    throw new Error("Kyc was cancelled repeatedly")
-                }
-            case "error":
-                setLoadingStatus("A KYC ERROR OCCURED");
-                return setKycResult();
+                        setKycCancelCount(1);
+                        break;
+                    } else {
+                        throw new Error("Kyc was cancelled repeatedly")
+                    }
+                case "error":
+                    setLoadingStatus("A KYC ERROR OCCURED");
+                    return setKycResult(onError);
 
-            // ----Complete workflow-----
-            case "auto_approved":
-                const newUser = user;
-                newUser.kyc_status = result.status;
-                setUser(newUser);
-                if (isFiat) {
-                    setLoadingStatus("CAPTURE PAYMENT");
-                    return capturePayment(onSuccess);
-                } else {
-                    setShowKyc(false);
-                    break;
-                }
-            case "auto_declined":
-                setLoadingStatus("INVALID KYC");
-                if (isFiat)
-                    return setKycResult();
-                else {
+                // ----Complete workflow-----
+                case "auto_approved":
                     const newUser = user;
                     newUser.kyc_status = result.status;
-                    throw new Error("Invalid KYC");
-                }
-            case "needs_review":
-                setLoadingStatus("KYC NEEDS REVIEW")
-                return setKycResult();
+                    setUser(newUser);
+                    if (isFiat) {
+                        setLoadingStatus("CAPTURE PAYMENT");
+                        return capturePayment(onSuccess, onError);
+                    } else {
+                        setShowKyc(false);
+                        break;
+                    }
+                case "auto_declined":
+                    setLoadingStatus("INVALID KYC");
+                    if (isFiat)
+                        return setKycResult(onError);
+                    else {
+                        const newUser = user;
+                        newUser.kyc_status = result.status;
+                        throw new Error("Invalid KYC");
+                    }
+                case "needs_review":
+                    setLoadingStatus("KYC NEEDS REVIEW")
+                    return setKycResult(onError);
+            }
+        } catch(err) {
+            return onError(err);
         }
     }
 
@@ -144,11 +145,11 @@ export default function useKYC({
             // @ts-ignore
             window.HyperKYCModule.launch(
                 kycConfig, 
-                (result) => handleKYCResult(result, onSuccess)
+                (result) => handleKYCResult(result, onSuccess, onError)
             )
         } catch(err) {
             console.error(err);
-            onError(err);
+            return onError(err);
         }
 
 

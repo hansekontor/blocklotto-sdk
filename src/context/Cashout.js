@@ -70,7 +70,7 @@ export function CashoutProvider({ children }) {
             return link;            
         } catch(err) {
             console.error(err);
-            onError(err);
+            return onError(err);
         }
     }
 

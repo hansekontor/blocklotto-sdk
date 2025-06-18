@@ -95,7 +95,7 @@ export default function usePayment({
             const parsedTickets = await addIssueTxs(ticketTxs, coinsUsed, paymentTxs);
             console.log("processPayment() parsedTickets", parsedTickets);
             setTicketsToRedeem(parsedTickets);
-            onSuccess(parsedTickets);
+            return onSuccess(parsedTickets);
         }
     }
 
@@ -235,28 +235,32 @@ export default function usePayment({
         return { payment, kycToken, coinsUsed };
     }
 
-    const sendPayment = async (rawPayment) => {
-        const rawResponse = await fetch("https://lsbx.nmrai.com/v1/pay", {
-            method: "POST",
-            headers: new Headers({
-                'Content-Type': `application/fiat-payment`
-            }),
-            signal: AbortSignal.timeout(20000),
-            body: rawPayment
-        });
+    const sendPayment = async (rawPayment, onError) => {
+        try {
+            const rawResponse = await fetch("https://lsbx.nmrai.com/v1/pay", {
+                method: "POST",
+                headers: new Headers({
+                    'Content-Type': `application/fiat-payment`
+                }),
+                signal: AbortSignal.timeout(20000),
+                body: rawPayment
+            });
 
-        return rawResponse;
+            return rawResponse;            
+        } catch(err) {
+            return onError(err);
+        }
     }
 
-    const capturePayment = async (onSuccess) => {
-        await sleep(3000);
+    const capturePayment = async (onSuccess, onError) => {
         notify({ type: "info", message: "Please wait..."});
-        await sleep(10000);
+        await sleep(13000);
 
         let response;
-        for (let retries = 0; retries < 3; retries++) {
+        const attempts = 5;
+        for (let retries = 0; retries < attempts; retries++) {
             console.log("capture payment attempt", retries);
-            const rawPaymentRes = await sendPayment(authPayment.rawPayment);
+            const rawPaymentRes = await sendPayment(authPayment.rawPayment, onError);
 
             if (rawPaymentRes.status == 200) {
                 const paymentResArrayBuf = await rawPaymentRes.arrayBuffer();
@@ -267,19 +271,19 @@ export default function usePayment({
                 console.log("msg", msg);
                 console.log("rawPaymentRes", rawPaymentRes);
 
-                if (retries < 2) {
-                    // retry 3 times in total
-                    await sleep(3000)
+                if (retries < attempts - 1) {
+                    notify({ type: "info", message: "Please wait..."});
+                    await sleep(5000)
                     continue;
                 } else {
                     // too many retries
                     console.error("Payment API Error: ", msg);
-                    throw new Error("API Error");
+                    return onError("API Error");
                 }
             } else {
                 const msg = await rawPaymentRes.text();
                 console.log("Payment API Error: ", msg);
-                throw new Error("API Error");
+                return onError("API Error");
             }
         }
 
@@ -287,7 +291,7 @@ export default function usePayment({
 
         if (!response) {
             console.log("Payment API Error: ", "payment buffer is undefined");
-            throw new Error('Payment API Error');
+            return onError('Payment API Error');
         }
         const ack = PaymentACK.fromRaw(response, null);
         console.log(ack.memo);
@@ -304,7 +308,7 @@ export default function usePayment({
         const parsedTicketTxs = await addIssueTxs(ticketTxs, authPayment.coinsUsed, paymentTxs);
         setTicketsToRedeem(parsedTicketTxs);
 
-        onSuccess("Successful Purchase");
+        return onSuccess("Successful Purchase");
     }
 
     const initiatePayment = (e) => {
@@ -323,10 +327,10 @@ export default function usePayment({
         try {
             setLoadingStatus("BUILDING TRANSACTION");
             await sleep(1000);
-            processPayment(onSuccess, true, pr);
+            return processPayment(onSuccess, true, pr);
         } catch(err) {
             console.error(err);
-            onError(err);
+            return onError(err);
         }
     }
 
@@ -378,8 +382,7 @@ export default function usePayment({
             } else if (isEtoken)
                 return handleEtokenPayment(pr, onSuccess, onError);            
         } catch(err) {
-            onError(err);
-            console.error(err);
+            return onError(err);
         }
     }
 
