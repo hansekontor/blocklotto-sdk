@@ -53,10 +53,6 @@ export const CheckoutProvider = ({ children }) => {
     const [kycCancelCount, setKycCancelCount] = useState(0);
     const [nmiCheckoutVariant, setNmiCheckoutVariant] = useState("lightbox");
 
-    const handlePaymentMethod = (method) => {
-        setPaymentProcessor(method);
-    }
-
     useEffect(() => {
         if (!etokenTimeout)
             forceWalletUpdate();
@@ -89,6 +85,7 @@ export const CheckoutProvider = ({ children }) => {
         setTicketQtyError,
         setShowPaymentForm,
         setTicketsToRedeem,
+        setPaymentProcessor,
     })
 
     const {
@@ -132,7 +129,6 @@ export const CheckoutProvider = ({ children }) => {
             handleKYCandCapture,
             handlePayment,
             handleSubmitAccount,
-            handlePaymentMethod,
             initiatePayment,
             handleNmiResult,
             setTicketQuantity,

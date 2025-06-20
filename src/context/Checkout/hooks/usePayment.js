@@ -9,6 +9,7 @@ import { useApp } from '../../App';
 import sleep from '../../../utils/sleep';
 import { useNotifications } from '../../Notifications';
 import { useCashTab } from '../../CashTab';
+import paymentMethods from '../../../constants/paymentMethods';
 
 export default function usePayment({
     authPayment,
@@ -28,7 +29,8 @@ export default function usePayment({
     maxEtokenTicketQuantity,
     setTicketQtyError,
     setShowPaymentForm,
-    setTicketsToRedeem
+    setTicketsToRedeem,
+    setPaymentProcessor,
 }) {
     const { wallet, addIssueTxs } = useCashTab();
     const { playerNumbers, setLoadingStatus, externalAid, unredeemedTickets, setEtokenTimeout } = useApp();
@@ -356,17 +358,25 @@ export default function usePayment({
 
     }
 
-    const handlePayment = async (onSuccess, onError) => {
+    const handlePayment = async (paymentMethod, onSuccess, onError) => {
         try {
-            // verify quantity input
+            // validate quantity input
             const isNumberInput = /[0-9]/.test(ticketQuantity);
             if (!isNumberInput) {
                 setTicketQtyError("Quantity must be a number");
                 return;
             }
 
-            // verify sufficient balance
-            const isEtoken = paymentProcessor === "etoken";
+            // validate payment method
+            const isAvailablePaymentMethod = paymentMethods.includes(paymentMethod);
+            if (!isAvailablePaymentMethod) {
+                throw new Error("Payment Method is not available");
+            } else {
+                setPaymentProcessor(paymentMethod);
+            }
+
+            // validate sufficient balance
+            const isEtoken = paymentMethod === "etoken";
             const sufficientBalance = Number(ticketQuantity) <= maxEtokenTicketQuantity;
             if (isEtoken && !sufficientBalance) {
                 if (maxEtokenTicketQuantity === 1)
