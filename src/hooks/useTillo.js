@@ -24,10 +24,12 @@ import BigNumber from "bignumber.js";
 import { useApp } from "../context/App";
 import { useCashTab } from "../context/CashTab";
 import { getWalletState } from "../utils/cashMethods";
+import { useNotifications } from "../context/Notifications";
 
 export default function useTillo() {
   const { setLoadingStatus, setEtokenTimeout } = useApp();
   const { wallet, addCashout } = useCashTab();
+  const notify = useNotifications();
   const { slpBalancesAndUtxos } = getWalletState(wallet);
 
   const token =
@@ -84,9 +86,13 @@ export default function useTillo() {
 
     if (!tilloBrands) {
       (async () => {
-        const fetchedTilloBrands = await getTilloBrands();
-        setTilloBrands(fetchedTilloBrands);
-        setTilloSelection(fetchedTilloBrands);
+        try {
+          const fetchedTilloBrands = await getTilloBrands();
+          setTilloBrands(fetchedTilloBrands);
+          setTilloSelection(fetchedTilloBrands);          
+        } catch(err) {
+          notify({ type: "error", message: "Tillo API Error"});
+        }
       })();
     }
   }, []);
@@ -113,7 +119,7 @@ export default function useTillo() {
     return newTilloSelection;
   };
 
-  const getGiftcard = async (brand) => {
+  const getGiftcard = async (brand, onError) => {
     try {
       setLoadingStatus("REQUESTING GIFTCARD");
 
@@ -253,7 +259,7 @@ export default function useTillo() {
 
       return link;
     } catch (err) {
-      console.error(err);
+        return onError(err);
     }
   };
 
