@@ -171,6 +171,18 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         }
     }, [user])    
 
+    // turn off etokenTimeout after 30 seconds
+    useEffect(() => {
+        async function endEtokenTimeout() {
+            const timeout = 30 * 1000;
+            await sleep(timeout);
+            setEtokenTimeout(false);
+        }
+
+        if (etokenTimeout)
+            endEtokenTimeout();
+    }, [etokenTimeout])
+
     const getMinedTicket = async (hash) => {
         const ticketRes = await fetch(`https://lsbx.nmrai.com/v1/ticket/${hash}`, {
             method: "GET",
