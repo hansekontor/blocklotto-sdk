@@ -98,6 +98,13 @@ export default function useTillo() {
   }, []);
 
   const filterTilloBrands = (country, currency) => {
+    if (!country) {
+      throw new Error("Missing country");
+    }
+
+    if (!currency) {
+      throw new Error("Missing currency");
+    }
     const newTilloSelection = tilloBrands
       .filter((brand) => brand.countries.includes(country))
       .filter((brand) => brand.currency === currency)
