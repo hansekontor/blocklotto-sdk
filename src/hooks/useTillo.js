@@ -26,7 +26,7 @@ import { useCashTab } from "../context/CashTab";
 import { getWalletState } from "../utils/cashMethods";
 
 export default function useTillo() {
-  const { setLoadingStatus } = useApp();
+  const { setLoadingStatus, setEtokenTimeout } = useApp();
   const { wallet, addCashout } = useCashTab();
   const { slpBalancesAndUtxos } = getWalletState(wallet);
 
@@ -247,6 +247,7 @@ export default function useTillo() {
       await addCashout(txs, coinsBurned);
 
       setLoadingStatus(false);
+      setEtokenTimeout(true);
 
       const link = ack.payment.getData("json").payout.result.url;
 

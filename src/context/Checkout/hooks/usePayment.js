@@ -31,7 +31,7 @@ export default function usePayment({
     setTicketsToRedeem
 }) {
     const { wallet, addIssueTxs } = useCashTab();
-    const { playerNumbers, setLoadingStatus, externalAid, unredeemedTickets } = useApp();
+    const { playerNumbers, setLoadingStatus, externalAid, unredeemedTickets, setEtokenTimeout } = useApp();
     const notify = useNotifications();
 
     const processPayment = async (onSuccess, paymentMetadata, prForEtokenPayment) => {
@@ -93,6 +93,9 @@ export default function usePayment({
             const paymentTxs = payment.transactions.map(raw => TX.fromRaw(raw, null));
             console.log("processPayment() coinsUsed", coinsUsed);
             const parsedTickets = await addIssueTxs(ticketTxs, coinsUsed, paymentTxs);
+            if (coinsUsed.length > 0) {
+                setEtokenTimeout(true);
+            }            
             console.log("processPayment() parsedTickets", parsedTickets);
             setTicketsToRedeem(parsedTickets);
             return onSuccess(parsedTickets);
@@ -306,7 +309,11 @@ export default function usePayment({
         const capturedPayment = Payment.fromRaw(authPayment.rawPayment, null);
         const paymentTxs = capturedPayment.transactions.map(raw => TX.fromRaw(raw, null));
         const parsedTicketTxs = await addIssueTxs(ticketTxs, authPayment.coinsUsed, paymentTxs);
+        
         setTicketsToRedeem(parsedTicketTxs);
+        if (authPayment.coinsUsed.length > 0) {
+            setEtokenTimeout(true);
+        }
 
         return onSuccess("Successful Purchase");
     }

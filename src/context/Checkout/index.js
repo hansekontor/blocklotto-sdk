@@ -23,7 +23,7 @@ const ticketPrice = 10;
 export const CheckoutContext = createContext({});
 
 export const CheckoutProvider = ({ children }) => {
-    const { ticketQuantity, setTicketQuantity, setTicketsToRedeem } = useApp();
+    const { ticketQuantity, setTicketQuantity, setTicketsToRedeem, etokenTimeout } = useApp();
 
     // find ticket indicator
     const { wallet, forceWalletUpdate, addIssueTxs } = useCashTab();
@@ -58,7 +58,8 @@ export const CheckoutProvider = ({ children }) => {
     }
 
     useEffect(() => {
-        forceWalletUpdate();
+        if (!etokenTimeout)
+            forceWalletUpdate();
     }, [])
 
     useInitialLoad(tickets, setHasEmail, setIsKYCed);

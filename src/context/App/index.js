@@ -67,6 +67,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
 
     const [protection, setProtection] = useState(false);
     const [walletUpdateAvailable, setWalletUpdateAvailable] = useState(false);
+    const [etokenTimeout, setEtokenTimeout] = useState(false);  
 
     const [affiliate, setAffiliate] = useState({});
     const [externalAid, setExternalAid] = useState(""); 
@@ -433,6 +434,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             affiliate,
             externalAid,
             walletUpdateAvailable,
+            etokenTimeout,
             checkRedeemability, 
             redeemTicket,
             changeEmail,
@@ -447,6 +449,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             setPlayerNumbers,
             setTicketsToRedeem,
             setGameTickets,
+            setEtokenTimeout,
         }}>
             {children}
             {loadingStatus && <Loading>{loadingStatus}</Loading>}
