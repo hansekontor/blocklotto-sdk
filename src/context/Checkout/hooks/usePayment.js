@@ -31,7 +31,7 @@ export default function usePayment({
     setTicketsToRedeem
 }) {
     const { wallet, addIssueTxs } = useCashTab();
-    const { playerNumbers, setLoadingStatus, externalAid } = useApp();
+    const { playerNumbers, setLoadingStatus, externalAid, unredeemedTickets } = useApp();
     const notify = useNotifications();
 
     const processPayment = async (onSuccess, paymentMetadata, prForEtokenPayment) => {
@@ -368,6 +368,13 @@ export default function usePayment({
                     setTicketQtyError(`You can only afford ${maxEtokenTicketQuantity} Tickets with eToken`);
                 return;
             }
+
+            const isAllowedQuantity = 50 - unredeemedTickets.length >= ticketQuantity;
+            if (!isAllowedQuantity) {
+                setTicketQtyError("You can only have 50 unredeemed tickets");
+                return;
+            }
+            
             setTicketQtyError(false);
 
             const pr = await getPaymentRequest();
