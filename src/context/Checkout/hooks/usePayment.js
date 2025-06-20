@@ -14,7 +14,6 @@ import paymentMethods from '../../../constants/paymentMethods';
 export default function usePayment({
     authPayment,
     ticketQuantity,
-    paymentProcessor,
     paymentMetadata,
     paymentRequest,
     slpBalancesAndUtxos,
@@ -36,14 +35,14 @@ export default function usePayment({
     const { playerNumbers, setLoadingStatus, externalAid, unredeemedTickets, setEtokenTimeout } = useApp();
     const notify = useNotifications();
 
-    const processPayment = async (onSuccess, paymentMetadata, prForEtokenPayment) => {
+    const processPayment = async (onSuccess, paymentMetadata, paymentMethod, prForEtokenPayment) => {
         const pr = prForEtokenPayment || paymentRequest;
         if (!pr) {
             throw new Error("Payment Request is missing");
         }
     
         setLoadingStatus("PROCESSING");
-        const type = paymentProcessor === "etoken" ? paymentProcessor : "fiat";
+        const type = paymentMethod === "etoken" ? paymentMethod : "fiat";
         const authonly = type === "fiat" && !isKYCed;
         console.log("authonly", authonly);
     
@@ -52,6 +51,7 @@ export default function usePayment({
             authonly,
             paymentMetadata,
             pr,
+            paymentMethod,
         );
         console.log("init payment", payment.toRaw().toString("hex"))
         setKycAccessToken(kycToken);
@@ -141,7 +141,8 @@ export default function usePayment({
         type,
         authonly,
         paymentMetadata,
-        prFromProcessing
+        prFromProcessing,
+        paymentMethod,
     ) => {
         // get message to sign
         const merchantData = prFromProcessing.paymentDetails.getData('json');
@@ -164,7 +165,7 @@ export default function usePayment({
 
         const coinsUsed = [];
         if (type === "fiat") {
-            bw.writeBytes(Buffer.from(paymentProcessor, 'utf-8'));
+            bw.writeBytes(Buffer.from(paymentMethod, 'utf-8'));
             bw.writeVarString(paymentMetadata, null);
         } else {
             // get token coins
@@ -336,7 +337,12 @@ export default function usePayment({
         try {
             setLoadingStatus("BUILDING TRANSACTION");
             await sleep(1000);
-            return processPayment(onSuccess, true, pr);
+            return processPayment(
+                onSuccess, 
+                true,
+                "etoken", 
+                pr,
+            );
         } catch(err) {
             console.error(err);
             return onError(err);
@@ -350,15 +356,20 @@ export default function usePayment({
             const handleSuccess = () => {
                 notify({type: "success", message: "Successful Purchase!"});
             }
-            processPayment(handleSuccess, paymentMetadata);
+            processPayment(
+                handleSuccess, 
+                paymentMetadata, 
+                "NMIC",
+            );
         } catch(err) {
             console.error(err);
-            notify({type: "", message: "Payment Processor Error"});
+            notify({type: "", message: "NMI Error"});
         }
 
     }
 
     const handlePayment = async (paymentMethod, onSuccess, onError) => {
+        console.log("handlePayment paymentMethod", paymentMethod)
         try {
             // validate quantity input
             const isNumberInput = /[0-9]/.test(ticketQuantity);
