@@ -63,15 +63,10 @@ export function CashoutProvider({ children }) {
     }
 
     const getGiftcardLink = async (brand, onError) => {
-        try {
-            const link = await getGiftcard(brand);
-            setGiftcardLink(link);
+        const link = await getGiftcard(brand, onError);
+        setGiftcardLink(link);
 
-            return link;            
-        } catch(err) {
-            console.error(err);
-            return onError(err);
-        }
+        return link;            
     }
 
     const minCashoutAmount = 10;
