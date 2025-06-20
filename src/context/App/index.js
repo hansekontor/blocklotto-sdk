@@ -318,29 +318,28 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
     }
 
     // checks if ticket can be redeemed
-    const checkRedeemability = async (ticket, polling) => {
-        const hasLottoSig = ticket.parsed?.minedTicket?.lottoSignature;
+    const checkTicketRedeemability = async (ticket, polling, onError) => {
+        try {
+            const isRedeemedTicket = ticket.redeemTx?.hash ? true : false;
+            if (isRedeemedTicket) {
+                throw new Error ("Ticket has already been redeemed");
+            }
 
-        if (hasLottoSig) {
-            console.log("hasLottoSig", hasLottoSig);
-            return true;
-        }
+            const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
+            let isMined = issueTxFromNode?.height > -1;
+            const hasLottoSig = ticket.parsed?.minedTicket?.lottoSignature;
 
-        const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
-        let isMined = issueTxFromNode?.height > -1;
+            if (isMined || hasLottoSig) {
+                console.log("isMined", isMined);
+                return true;
+            } else if (polling) {
+                console.log("CHECKREDEEMABILITY start polling");
+                // poll indexer every 2 min
+                const timeBetweenPolling = 2 * 60 * 1000;
 
-        if (isMined) {
-            console.log("isMined", isMined);
-            return true;
-        } else if (polling) {
-            console.log("CHECKREDEEMABILITY start polling");
-            // poll indexer every 2 min
-            const timeBetweenPolling = 2 * 60 * 1000;
-
-            while (!isMined) {
-                console.log("started waiting time");
-                await sleep(timeBetweenPolling);
-                // if (!polling) {
+                while (!isMined) {
+                    console.log("Polling: started waiting period");
+                    await sleep(timeBetweenPolling);
                     const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
                     console.log("issueTxFromNode", issueTxFromNode);
                     if (!issueTxFromNode) {
@@ -355,12 +354,12 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
                         notify({ message: "You can redeem your ticket now!", type: "success" });
                         return true;
                     }                    
-                // } else { 
-                //     return;
-                // }
+                }
+            } else {
+                return false;
             }
-        } else {
-            return false;
+        } catch(err) {
+            return onError(err);
         }
     }
 
@@ -447,7 +446,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             externalAid,
             walletUpdateAvailable,
             etokenTimeout,
-            checkRedeemability, 
+            checkTicketRedeemability, 
             redeemTicket,
             changeEmail,
             importWallet,
