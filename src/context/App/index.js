@@ -352,6 +352,16 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
     }
 
     const changeEmail = async (emailInput) => {
+        const isValidEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(emailInput);
+        if (!isValidEmail) {
+            throw new Error("Invalid Email");
+        }
+
+        const isOldEmail = emailInput === email;
+        if (isOldEmail) {
+            throw new Error("Old Email Address");
+        }
+
         const keyring = KeyRing.fromSecret(wallet.Path1899.fundingWif);
 		const msg = Buffer.from(emailInput, 'utf-8');
 		const sig = keyring.sign(SHA256.digest(msg));
@@ -383,10 +393,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
                 message: "Email has been changed"
             });
         } else {
-            notify({
-                type: "error",
-                message: "Error changing email"
-            });
+            throw new Error("Email API Error");
 		}
     }
     
