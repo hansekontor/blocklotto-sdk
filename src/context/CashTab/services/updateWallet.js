@@ -50,7 +50,8 @@ const updateWallet = async ({ wallet, getTicketData, setWallet, setApiError }) =
             utxos: ticketData.utxos,
             tokens: tokens,
             slpBalancesAndUtxos: slpBalancesAndUtxos,
-            tickets: ticketHistory.tickets
+            tickets: ticketHistory.tickets,
+            lastUpdateTime: Date.now(),
         };
 
         // Apply the new state to the wallet
