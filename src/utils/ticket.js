@@ -688,3 +688,54 @@ export const schrodingerOutscript = (authPubKey) => {
     return script.compile();
 
 }
+
+export const getFormattedTicketData = (ticket) => {
+    // get redeem utc string
+    let redeemDisplayTime
+	if (ticket.redeemTx?.time) {
+		const date = new Date(ticket.redeemTx.time * 1000);
+		redeemDisplayTime = date.toUTCString();
+	}
+
+	// get issue utc string
+    let issueDisplayTime;
+	if (ticket.issueTx?.time) {
+		const date = new Date(ticket.issueTx.time * 1000);
+		issueDisplayTime = date.toUTCString();
+	}
+
+    // get general display time
+	if (redeemDisplayTime)
+		displayTime = redeemDisplayTime.slice(0,16);
+	else if (issueDisplayTime)
+		displayTime = issueDisplayTime.slice(0,16);
+
+	const primaryHash = ticket.redeemTx ? ticket.redeemTx?.hash : ticket.issueTx?.hash;
+	const displayPlayerNumbers =  ticket.parsed?.playerNumbers?.join(", ");
+	const displayPayoutAmount = ticket.parsed?.payoutAmount / 100;
+	const displayResultingNumbers = ticket.parsed?.game?.resultingNumbers?.join(", ");
+
+    const combined = [];
+	if (ticket.parsed?.opponentNumbers && ticket.parsed?.playerNumbers && !combinedNumbers) {
+		for (let i = 0; i < 4;i++) {
+			const buf = Buffer.alloc(2);
+			buf.writeUInt8(ticket.parsed.opponentNumbers[i], 0);
+			buf.writeUInt8(ticket.parsed.playerNumbers[i], 1);
+			const combinedNum = buf.readInt16LE();	
+			combined.push(combinedNum);
+		}
+    }
+
+    const formattedTicketData = {
+        displayTime, 
+        issueDisplayTime, 
+        redeemDisplayTime,
+        primaryHash, 
+        displayPlayerNumbers, 
+        displayPayoutAmount,
+        displayResultingNumbers,
+        combinedNumbers,
+    }
+
+    return formattedTicketData;
+}
