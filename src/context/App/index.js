@@ -324,7 +324,10 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         try {
             const isRedeemedTicket = ticket.redeemTx?.hash ? true : false;
             if (isRedeemedTicket) {
-                throw new Error ("Ticket has already been redeemed");
+                return onResult({
+                    redeemable: false,
+                    message: "Ticket has already been redeemed"
+                });
             }
 
             const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
@@ -333,7 +336,10 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
 
             if (isMined || hasLottoSig) {
                 console.log("isMined", isMined);
-                return true;
+                return onResult({
+                    redeemable: true,
+                    message: "You can redeem your ticket now!"
+                });
             } else if (polling) {
                 console.log("CHECKREDEEMABILITY start polling");
                 // poll indexer every 2 min
@@ -345,23 +351,27 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
                     const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
                     console.log("issueTxFromNode", issueTxFromNode);
                     if (!issueTxFromNode) {
-                        notify({ error: "error", message: "Transaction does not exist"});
-                        return false;
+                        throw new Error("Transaction does not exist");
                     }
                     isMined = issueTxFromNode.height > -1;
                     console.log("isMined", isMined);
                     if (!isMined) {
                         notify({ message: "Please wait...", type: "info" });
                     } else {
-                        notify({ message: "You can redeem your ticket now!", type: "success" });
-                        return true;
+                        return onResult({
+                            redeemable: true,
+                            message: "You can redeem your ticket now!"
+                        });
                     }                    
                 }
             } else {
-                return false;
+                throw new Error("Ticket not yet redeemable");
             }
         } catch(err) {
-            return onError(err);
+            return onResult({
+                redeemable: false,
+                message: err
+            });
         }
     }
 
