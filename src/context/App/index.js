@@ -12,7 +12,7 @@ import { useCashTab } from '../CashTab';
 import { Modal } from 'antd';
 import { bcrypto, KeyRing, TX, Coin, Script } from '@hansekontor/checkout-components';
 const { SHA256 } = bcrypto;
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import useBCH from '../../hooks/useBCH';
 import { U64 } from 'n64';
 
@@ -30,6 +30,7 @@ export const AppContext = createContext/** @type {import('./types').AppContextVa
 
 export const AppWrapper = ({ Loading, children, user, setUser }) => {
     const history = useHistory();
+    const location = useLocation();
     const { wallet, balance, addMinedTicketToStorage, addRedeemTxToStorage, createWallet, validateMnemonic, forceWalletUpdate } = useCashTab();
     const { getTxBcash, broadcastTx } = useBCH();
     const notify = useNotifications();
