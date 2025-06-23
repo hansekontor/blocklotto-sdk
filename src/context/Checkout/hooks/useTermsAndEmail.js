@@ -28,7 +28,9 @@ export default function useTermsAndEmail({
 
 
     const handleAgree = async (e) => {
-        e.preventDefault();
+        if (e) {
+            e.preventDefault();
+        }
         setHasAgreed(true);
         await sleep(500);
         setFirstRendering(false);
