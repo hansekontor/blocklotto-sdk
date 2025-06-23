@@ -705,6 +705,7 @@ export const getFormattedTicketData = (ticket) => {
 	}
 
     // get general display time
+    let displayTime;
 	if (redeemDisplayTime)
 		displayTime = redeemDisplayTime.slice(0,16);
 	else if (issueDisplayTime)
@@ -715,14 +716,14 @@ export const getFormattedTicketData = (ticket) => {
 	const displayPayoutAmount = ticket.parsed?.payoutAmount / 100;
 	const displayResultingNumbers = ticket.parsed?.game?.resultingNumbers?.join(", ");
 
-    const combined = [];
+    const combinedNumbers = [];
 	if (ticket.parsed?.opponentNumbers && ticket.parsed?.playerNumbers && !combinedNumbers) {
 		for (let i = 0; i < 4;i++) {
 			const buf = Buffer.alloc(2);
 			buf.writeUInt8(ticket.parsed.opponentNumbers[i], 0);
 			buf.writeUInt8(ticket.parsed.playerNumbers[i], 1);
 			const combinedNum = buf.readInt16LE();	
-			combined.push(combinedNum);
+			combinedNumbers.push(combinedNum);
 		}
     }
 
@@ -731,7 +732,7 @@ export const getFormattedTicketData = (ticket) => {
         issueDisplayTime, 
         redeemDisplayTime,
         primaryHash, 
-        displayPlayerNumbers, 
+        displayPlayerNumbers,
         displayPayoutAmount,
         displayResultingNumbers,
         combinedNumbers,

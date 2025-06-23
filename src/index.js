@@ -10,4 +10,3 @@ export * from './utils/sleep';
 export * from './utils/cashMethods';
 export * from './constants/winningTiers';
 export * from './constants/paymentMethods';
-export { getFormattedTicketData } from './utils/ticket';
