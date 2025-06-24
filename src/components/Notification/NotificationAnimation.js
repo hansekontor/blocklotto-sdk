@@ -45,6 +45,7 @@ export default function NotificationAnimation({ children, id, removeNotification
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    // fade out notification after timeout
     useEffect(() => {
         const handleClosing = async () => {
             await sleep(currency.notificationDurationShort * 1000);
@@ -53,6 +54,7 @@ export default function NotificationAnimation({ children, id, removeNotification
         handleClosing();
     }, []);
 
+    // close notification after fadeout
     useEffect(() => {
         const handleClosing = async () => {
             if (isClosing) {

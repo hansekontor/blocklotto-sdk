@@ -47,7 +47,7 @@ export default function useTillo() {
   const [giftcardLink, setGiftcardLink] = useState(false);
   const [brandData, setBrandData] = useState(false);
 
-  // get available tillo brands
+  // fetch available tillo brands
   useEffect(() => {
     const getTilloBrands = async () => {
       const response = await fetch("https://lsbx.nmrai.com/v1/cards", {

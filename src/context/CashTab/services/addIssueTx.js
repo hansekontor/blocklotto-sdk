@@ -3,8 +3,6 @@ import TicketHistory from '../../../utils/ticket';
 import { addSlpToSendTx, addUtxos, removeUsedCoins } from '../../../utils/cashMethods';
 import writeWalletState from './writeWalletState';
 
-// todo: integrate with addIssueTxsToStorage 
-
 /**
  * Processes issuance transactions and updates the wallet state accordingly.
  * It adds newly issued tickets, updates SLP balances and UTXOs based on coins used and change from payment transactions.

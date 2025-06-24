@@ -323,7 +323,7 @@ export default function usePayment({
 
     const initiatePayment = (e) => {
         if (e) {
-        e.preventDefault();
+            e.preventDefault();
         }
 
         // @ts-ignore

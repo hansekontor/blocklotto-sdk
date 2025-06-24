@@ -264,6 +264,7 @@ export const CashTabProvider = ({ children, Loading }) => {
     /** @type {[boolean, (value: boolean) => void]} */
     const [isLoading, setIsLoading] = useState(true);
 
+    // either get wallet from local storage or create a new wallet
     useEffect(() => {
         const fetchWallet = async () => {
             try {

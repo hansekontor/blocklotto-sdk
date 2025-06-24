@@ -262,7 +262,6 @@ export default class TicketHistory {
             }
 
             // parse confirmed ticket
-            // todo: add all relevant data
             const isMined = ticket.issueTx.height > 0;
             if (isMined) {
                 if (!(parsed.opponentNumbers && parsed.resultingNumbers && parsed.payoutAmountNum && parsed.tier)) {

@@ -25,15 +25,16 @@ export function NMICheckout({
     const notify = useNotifications();
     const { user } = useApp();
 
+    // block user if ticket purchase is not available
     useEffect(() => {
         (async () => {
             if (user && !user.ipGeo.ticketPurchase) {
                 notify({ message: "ACCESS DENIED", type: "error" });
-                // history.push("/select");
             }
         })()
     }, [user])
 
+    // configure NMI checkout
     useEffect(() => {
         // @ts-ignore: CollectJS is globally available
         window.CollectJS.configure({

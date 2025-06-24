@@ -78,6 +78,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
     
     const [email, setEmail] = useState(false);
 
+    // listen to history changes
     useEffect(() => {
         const unlisten = history.listen(() => {
             setLoadingStatus("");
@@ -340,7 +341,6 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
                     message: "You can redeem your ticket now!"
                 });
             } else if (polling) {
-                console.log("CHECKREDEEMABILITY start polling");
                 // poll indexer every 2 min
                 const timeBetweenPolling = 2 * 60 * 1000;
 

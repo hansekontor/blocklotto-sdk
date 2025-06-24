@@ -23,6 +23,7 @@ export default function useKYC({
     const notify = useNotifications();
     const { setLoadingStatus, user, setUser, wallet } = useApp();
 
+    // configure KYC once the access token is available
     useEffect(() => {
         const kycRequired = !user.kyc_status?.includes("approved");
         if (kycAccessToken && kycRequired) {

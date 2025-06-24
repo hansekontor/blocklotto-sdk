@@ -44,8 +44,6 @@ export function CashoutProvider({ children }) {
 
     const [cashoutMethod, setCashoutMethod] = useState("tillo");
 
-    const previousPath = location.state?.returnTo || "/select";
-
     // force wallet update on cashout
     useEffect(() => {
         const loadWallet = async () => {
