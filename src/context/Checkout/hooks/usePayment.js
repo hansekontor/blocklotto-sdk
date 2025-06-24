@@ -322,8 +322,9 @@ export default function usePayment({
     }
 
     const initiatePayment = (e) => {
-        console.log("handleSubmit()")
+        if (e) {
         e.preventDefault();
+        }
 
         // @ts-ignore
         if (window.CollectJS) {
