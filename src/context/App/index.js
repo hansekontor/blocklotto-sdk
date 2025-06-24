@@ -319,7 +319,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
     }
 
     // checks if ticket can be redeemed
-    const checkTicketRedeemability = async (ticket, polling, onError) => {
+    const checkTicketRedeemability = async (ticket, polling, onResult) => {
         try {
             const isRedeemedTicket = ticket.redeemTx?.hash ? true : false;
             if (isRedeemedTicket) {
