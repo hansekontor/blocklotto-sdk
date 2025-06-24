@@ -314,8 +314,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             }
         } catch (err) {
             console.error(err);
-            notify({type: "error", message: "Broadcasting Error"});
-            return;
+            throw new Error(err);
         }
     }
 
