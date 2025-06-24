@@ -53,6 +53,7 @@ export const CheckoutProvider = ({ children }) => {
     const [kycCancelCount, setKycCancelCount] = useState(0);
     const [nmiCheckoutVariant, setNmiCheckoutVariant] = useState("lightbox");
 
+    // update wallet when checkout begins
     useEffect(() => {
         if (!etokenTimeout)
             forceWalletUpdate();
