@@ -130,149 +130,161 @@ export default function useTillo() {
     try {
       setLoadingStatus("REQUESTING GIFTCARD");
 
-      const json = {
-        value: String(giftcardAmount),
-        brand,
-      };
-      console.log("cardOptions", json);
+      const isValidAmount = validateGiftcardAmount(giftcardAmount);
 
-      const invoiceRes = await fetch("https://lsbx.nmrai.com/v1/cardreq", {
-        method: "POST",
-        mode: "cors",
-        body: JSON.stringify(json),
-        headers: new Headers({
-          "Content-Type": "application/etoken-paymentrequest",
-        }),
-        signal: AbortSignal.timeout(20000),
-      });
-      // console.log("invoiceRes", invoiceRes);
+      if (isValidAmount) {
+        const json = {
+          value: String(giftcardAmount),
+          brand,
+        };
+        console.log("cardOptions", json);
 
-      // add api error handling
-      if (invoiceRes.status !== 200) {                
-        const msg = await rawPaymentRes.text();
-        throw new Error(msg);
+        const invoiceRes = await fetch("https://lsbx.nmrai.com/v1/cardreq", {
+          method: "POST",
+          mode: "cors",
+          body: JSON.stringify(json),
+          headers: new Headers({
+            "Content-Type": "application/etoken-paymentrequest",
+          }),
+          signal: AbortSignal.timeout(20000),
+        });
+        // console.log("invoiceRes", invoiceRes);
+
+        // add api error handling
+        if (invoiceRes.status !== 200) {                
+          const msg = await rawPaymentRes.text();
+          throw new Error(msg);
+        }
+
+        const invoiceArrayBuffer = await invoiceRes.arrayBuffer();
+        const invoiceBuf = Buffer.from(invoiceArrayBuffer);
+
+        const pr = PaymentRequest.fromRaw(invoiceBuf);
+        const prOutputs = pr.paymentDetails.outputs;
+        console.log("pr", pr);
+
+        setLoadingStatus("BUILDING TRANSACTION");
+
+        const merchantData = pr.paymentDetails.getData("json");
+        // console.log("merchantData", merchantData);
+        const paymentDataBuf = Buffer.from(merchantData.paymentdata, "hex");
+        const br = bio.read(paymentDataBuf);
+        const id = uuidStringify(br.readBytes(16));
+        const amount = br.readU32() / 100;
+        // console.log({id, amount})
+
+        const payment = new Payment({
+          memo: pr.paymentDetails.memo,
+        });
+
+        // Get token coins
+        const sortedTokenUtxos = slpBalancesAndUtxos.slpUtxos
+          .filter((u) => u.slp?.tokenId && ["MINT", "SEND"].includes(u.slp.type))
+          .sort((a, b) => parseInt(a.slp.value) - parseInt(b.slp.value));
+
+        const tx = new MTX();
+        // Add outputs
+        for (let i = 0; i < prOutputs.length; i++) {
+          tx.addOutput(Script.fromRaw(prOutputs[i].script), prOutputs[i].value);
+        }
+
+        // Calculate needed coins
+        const coinsBurned = [];
+        let baseAmount = amount * 100;
+        for (let i = 0; i < sortedTokenUtxos.length; i++) {
+          const utxo = sortedTokenUtxos[i];
+          tx.addCoin(Coin.fromJSON(utxo));
+          coinsBurned.push(utxo);
+          baseAmount -= parseInt(utxo.slp.value);
+          if (baseAmount <= 0) break;
+        }
+
+        console.log("baseAmount", baseAmount);
+
+        if (baseAmount > 0)
+          throw new Error("Insufficient token funds in address");
+
+        const buyerKeyring = KeyRing.fromSecret(wallet.Path1899.fundingWif);
+
+        // Add a change output to script if necessary
+        const baseChange = parseInt(baseAmount * -1);
+        if (baseChange > 0) {
+          tx.outputs[0].script
+            .pushData(U64.fromInt(baseChange).toBE(Buffer))
+            .compile();
+          tx.addOutput(buyerKeyring.getAddress(), 546);
+        }
+
+        // Sign tx
+        const hashTypes = Script.hashType;
+        const sighashType =
+          hashTypes.ALL | hashTypes.ANYONECANPAY | hashTypes.SIGHASH_FORKID;
+        tx.sign(buyerKeyring, sighashType);
+
+        payment.transactions.push(tx.toRaw());
+        payment.refundTo.push({
+          value: 546,
+          script: Script.fromAddress(buyerKeyring.getAddress("string")).toRaw(),
+        });
+
+        const sig = buyerKeyring.sign(paymentDataBuf);
+
+        payment.setData({
+          ...merchantData,
+          buyerpubkey: buyerKeyring.getPublicKey("hex"),
+          signature: sig.toString("hex"),
+        });
+
+        const rawPaymentRes = await fetch("https://lsbx.nmrai.com/v1/cardpay", {
+          method: "POST",
+          signal: AbortSignal.timeout(20000),
+          headers: new Headers({
+            "Content-Type": `application/etoken-payment`,
+          }),
+          body: payment.toRaw(),
+        });
+        console.log("rawPaymentRes", rawPaymentRes);
+        if (rawPaymentRes.status !== 200)
+          throw new Error(rawPaymentRes.statusText);
+
+        const paymentResArrayBuf = await rawPaymentRes.arrayBuffer();
+        const response = Buffer.from(paymentResArrayBuf);
+
+        const ack = PaymentACK.fromRaw(response);
+
+        // console.log("ack.payment", ack.payment.getData('json'))
+        // console.log("ack.memo", ack.memo)
+
+        const rawTransactions = ack.payment.transactions;
+        const txs = rawTransactions.map((r) => TX.fromRaw(r));
+        // console.log(txs)
+
+        // remove utxos locally
+        await addCashout(txs, coinsBurned);
+
+        setLoadingStatus(false);
+        setEtokenTimeout(true);
+
+        const link = ack.payment.getData("json").payout.result.url;
+
+        return link;
       }
-
-      const invoiceArrayBuffer = await invoiceRes.arrayBuffer();
-      const invoiceBuf = Buffer.from(invoiceArrayBuffer);
-
-      const pr = PaymentRequest.fromRaw(invoiceBuf);
-      const prOutputs = pr.paymentDetails.outputs;
-      console.log("pr", pr);
-
-      setLoadingStatus("BUILDING TRANSACTION");
-
-      const merchantData = pr.paymentDetails.getData("json");
-      // console.log("merchantData", merchantData);
-      const paymentDataBuf = Buffer.from(merchantData.paymentdata, "hex");
-      const br = bio.read(paymentDataBuf);
-      const id = uuidStringify(br.readBytes(16));
-      const amount = br.readU32() / 100;
-      // console.log({id, amount})
-
-      const payment = new Payment({
-        memo: pr.paymentDetails.memo,
-      });
-
-      // Get token coins
-      const sortedTokenUtxos = slpBalancesAndUtxos.slpUtxos
-        .filter((u) => u.slp?.tokenId && ["MINT", "SEND"].includes(u.slp.type))
-        .sort((a, b) => parseInt(a.slp.value) - parseInt(b.slp.value));
-
-      const tx = new MTX();
-      // Add outputs
-      for (let i = 0; i < prOutputs.length; i++) {
-        tx.addOutput(Script.fromRaw(prOutputs[i].script), prOutputs[i].value);
-      }
-
-      // Calculate needed coins
-      const coinsBurned = [];
-      let baseAmount = amount * 100;
-      for (let i = 0; i < sortedTokenUtxos.length; i++) {
-        const utxo = sortedTokenUtxos[i];
-        tx.addCoin(Coin.fromJSON(utxo));
-        coinsBurned.push(utxo);
-        baseAmount -= parseInt(utxo.slp.value);
-        if (baseAmount <= 0) break;
-      }
-
-      console.log("baseAmount", baseAmount);
-
-      if (baseAmount > 0)
-        throw new Error("Insufficient token funds in address");
-
-      const buyerKeyring = KeyRing.fromSecret(wallet.Path1899.fundingWif);
-
-      // Add a change output to script if necessary
-      const baseChange = parseInt(baseAmount * -1);
-      if (baseChange > 0) {
-        tx.outputs[0].script
-          .pushData(U64.fromInt(baseChange).toBE(Buffer))
-          .compile();
-        tx.addOutput(buyerKeyring.getAddress(), 546);
-      }
-
-      // Sign tx
-      const hashTypes = Script.hashType;
-      const sighashType =
-        hashTypes.ALL | hashTypes.ANYONECANPAY | hashTypes.SIGHASH_FORKID;
-      tx.sign(buyerKeyring, sighashType);
-
-      payment.transactions.push(tx.toRaw());
-      payment.refundTo.push({
-        value: 546,
-        script: Script.fromAddress(buyerKeyring.getAddress("string")).toRaw(),
-      });
-
-      const sig = buyerKeyring.sign(paymentDataBuf);
-
-      payment.setData({
-        ...merchantData,
-        buyerpubkey: buyerKeyring.getPublicKey("hex"),
-        signature: sig.toString("hex"),
-      });
-
-      const rawPaymentRes = await fetch("https://lsbx.nmrai.com/v1/cardpay", {
-        method: "POST",
-        signal: AbortSignal.timeout(20000),
-        headers: new Headers({
-          "Content-Type": `application/etoken-payment`,
-        }),
-        body: payment.toRaw(),
-      });
-      console.log("rawPaymentRes", rawPaymentRes);
-      if (rawPaymentRes.status !== 200)
-        throw new Error(rawPaymentRes.statusText);
-
-      const paymentResArrayBuf = await rawPaymentRes.arrayBuffer();
-      const response = Buffer.from(paymentResArrayBuf);
-
-      const ack = PaymentACK.fromRaw(response);
-
-      // console.log("ack.payment", ack.payment.getData('json'))
-      // console.log("ack.memo", ack.memo)
-
-      const rawTransactions = ack.payment.transactions;
-      const txs = rawTransactions.map((r) => TX.fromRaw(r));
-      // console.log(txs)
-
-      // remove utxos locally
-      await addCashout(txs, coinsBurned);
-
-      setLoadingStatus(false);
-      setEtokenTimeout(true);
-
-      const link = ack.payment.getData("json").payout.result.url;
-
-      return link;
     } catch (err) {
         return onError(err);
     }
   };
 
-  const validateGiftcardAmount = () => {
-    // todo: add validation
-    return true;
+  const validateGiftcardAmount = (amount) => {
+    const isPositiveAmount = amount > 0;
+    const hasSufficientBalance = balance >= amount;
+
+    if (!isPositiveAmount) {
+      throw new Error("Amount needs to be positive");
+    } else if (!hasSufficientBalance) {
+      throw new Error("Amount exceeds available balance");
+    } else {
+      return true;
+    }
   };
 
   const handleTilloBrandChange = (selectedBrand) => {
