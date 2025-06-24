@@ -15,7 +15,7 @@ export default function useTermsAndEmail({
     setCountryError,
     setHasEmail, 
 }) {
-    const { forceWalletUpdate, wallet } = useCashTab();
+    const { wallet } = useCashTab();
     const { user, setEmail } = useApp();
 
     useEffect(() => {
