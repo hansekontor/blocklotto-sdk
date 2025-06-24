@@ -18,15 +18,6 @@ export default function useTermsAndEmail({
     const { wallet } = useCashTab();
     const { user, setEmail } = useApp();
 
-    useEffect(() => {
-        (async () => {
-            if (hasAgreed) {
-                await forceWalletUpdate();
-            }
-        })
-    }, [hasAgreed])
-
-
     const handleAgree = async (e) => {
         if (e) {
             e.preventDefault();
