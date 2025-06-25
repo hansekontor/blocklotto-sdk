@@ -715,8 +715,9 @@ export const getFormattedTicketData = (ticket) => {
 	const displayPayoutAmount = ticket.parsed?.payoutAmount / 100;
 	const displayResultingNumbers = ticket.parsed?.game?.resultingNumbers?.join(", ");
 
-    const combinedNumbers = [];
-	if (ticket.parsed?.opponentNumbers && ticket.parsed?.playerNumbers && !combinedNumbers) {
+    let combinedNumbers;
+	if (ticket.parsed?.opponentNumbers && ticket.parsed?.playerNumbers) {
+        combinedNumbers = [];
 		for (let i = 0; i < 4;i++) {
 			const buf = Buffer.alloc(2);
 			buf.writeUInt8(ticket.parsed.opponentNumbers[i], 0);
