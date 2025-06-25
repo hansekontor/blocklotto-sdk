@@ -24,7 +24,6 @@ import TXUtil from '../../utils/txutil';
 import playerWinningsTier from '../../constants/winningTiers';
 import sleep from '../../utils/sleep';
 import { getWalletState } from '../../utils/cashMethods';
-import { getFormattedTicketData } from '../../utils/ticket';
 
 export const AppContext = createContext/** @type {import('./types').AppContextValue} */({});
 
@@ -463,7 +462,6 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             importWallet,
             validateMnemonic,
             updateWallet,
-            getFormattedTicketData,
             setUser,
             setEmail,
             setTicketQuantity,
