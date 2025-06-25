@@ -30,7 +30,6 @@ export default function usePayment({
     setShowPaymentForm,
     setTicketsToRedeem,
     setPaymentProcessor,
-    setPaymentEvent,
 }) {
     const { wallet, addIssueTxs } = useCashTab();
     const { playerNumbers, setLoadingStatus, externalAid, unredeemedTickets, setEtokenTimeout } = useApp();
@@ -368,14 +367,8 @@ export default function usePayment({
 
     }
 
-    const handlePayment = async (options, onSuccess, onError) => {
+    const handlePayment = async (paymentMethod, onSuccess, onError) => {
         try {
-            const { paymentMethod, event } = options;
-            
-            if (event) {
-                setPaymentEvent(event);
-            }
-
             // validate quantity input
             const isNumberInput = /[0-9]/.test(ticketQuantity);
             if (!isNumberInput) {

@@ -52,7 +52,6 @@ export const CheckoutProvider = ({ children }) => {
     const [authPayment, setAuthPayment] = useState(false);
     const [kycCancelCount, setKycCancelCount] = useState(0);
     const [nmiCheckoutVariant, setNmiCheckoutVariant] = useState("lightbox");
-    const [paymentEvent, setPaymentEvent] = useState(false);
 
     // update wallet when checkout begins
     useEffect(() => {
@@ -61,13 +60,6 @@ export const CheckoutProvider = ({ children }) => {
     }, [])
 
     useInitialLoad(tickets, setHasEmail, setIsKYCed);
-
-    // launch credit card payment in case of direct call
-    useEffect(() => {
-        if (paymentEvent && paymentRequest && showPaymentForm) {
-            initiatePayment(paymentEvent);
-        }
-    }, [paymentEvent, paymentRequest, showPaymentForm])
 
     const {
         sendPayment,
@@ -95,7 +87,6 @@ export const CheckoutProvider = ({ children }) => {
         setShowPaymentForm,
         setTicketsToRedeem,
         setPaymentProcessor,
-        setPaymentEvent
     })
 
     const {
