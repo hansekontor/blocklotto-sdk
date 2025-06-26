@@ -1,6 +1,4 @@
-const paymentMethods = [
+export const paymentMethods = [
     'etoken', 
     'NMIC'
 ];
-
-export default paymentMethods;

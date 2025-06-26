@@ -9,7 +9,7 @@ import { useApp } from '../../App';
 import sleep from '../../../utils/sleep';
 import { useNotifications } from '../../Notifications';
 import { useCashTab } from '../../CashTab';
-import paymentMethods from '../../../constants/paymentMethods';
+import { paymentMethods } from '../../../constants/paymentMethods';
 
 export default function usePayment({
     authPayment,
