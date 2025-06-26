@@ -113,6 +113,7 @@ export default function usePayment({
 
         if (externalAid.length > 0) {
             merchantData["affiliatepubkey"] = externalAid;
+            console.log("affiliatePubkey", externalAid);
         }
 
         const res = await fetch("https://lsbx.nmrai.com/v1/invoice", {
@@ -377,6 +378,8 @@ export default function usePayment({
             }
 
             // validate payment method
+            console.log("availablePaymentMethods", paymentMethods);
+            console.log("selected paymentMethod", paymentMethod);
             const isAvailablePaymentMethod = paymentMethods.includes(paymentMethod);
             if (!isAvailablePaymentMethod) {
                 throw new Error("Payment Method is not available");
