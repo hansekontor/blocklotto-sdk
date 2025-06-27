@@ -262,7 +262,7 @@ export default function usePayment({
 
     const capturePayment = async (onSuccess, onError) => {
         notify({ type: "info", message: "Please wait..."});
-        await sleep(13000);
+        await sleep(20000);
 
         let response;
         const attempts = 5;
@@ -281,7 +281,7 @@ export default function usePayment({
 
                 if (retries < attempts - 1) {
                     notify({ type: "info", message: "Please wait..."});
-                    await sleep(5000)
+                    await sleep(5100)
                     continue;
                 } else {
                     // too many retries
