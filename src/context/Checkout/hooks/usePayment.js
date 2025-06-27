@@ -111,11 +111,6 @@ export default function usePayment({
             quantity: ticketQuantity, 
         };
 
-        if (externalAid.length > 0) {
-            merchantData["affiliatepubkey"] = externalAid;
-            console.log("affiliatePubkey", externalAid);
-        }
-
         const res = await fetch("https://lsbx.nmrai.com/v1/invoice", {
             method: "POST",
             headers: new Headers({
@@ -232,12 +227,18 @@ export default function usePayment({
         // get signature
         const sigBuf = signMessage(wallet.Path1899.fundingWif, msgBuf);
 
-        payment.setData({
+        const data = {
             authonly: authonly,
             buyerpubkey: wallet.Path1899.publicKey,
             signature: sigBuf.toString('hex'),
             paymentdata: msgBuf.toString('hex')
-        }, null);
+        };
+
+        if (externalAid.length > 0) {
+            data.affiliatepubkey = externalAid;
+        }
+        
+        payment.setData(data, null);
 
         return { payment, kycToken, coinsUsed };
     }
