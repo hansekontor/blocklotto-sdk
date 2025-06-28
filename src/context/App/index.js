@@ -440,6 +440,19 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         }
     }
 
+    const getAffiliateLink = (url) => {
+        const query = new URLSearchParams({
+            aid: affiliate.aid,
+        });
+
+        const link = url ? 
+            url + "?" + query :
+            `${window.location.protocol}//${window.location.host}/#/?${query}`
+        ;
+
+        return link;
+    }
+
     return (
         <AppContext.Provider value={{
             protection,
@@ -464,6 +477,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             importWallet,
             validateMnemonic,
             updateWallet,
+            getAffiliateLink,
             setUser,
             setEmail,
             setTicketQuantity,
