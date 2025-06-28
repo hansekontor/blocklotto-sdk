@@ -440,15 +440,20 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         }
     }
 
-    const getAffiliateLink = (url) => {
+    const getAffiliateLink = (options) => {
+
         const query = new URLSearchParams({
             aid: affiliate.aid,
         });
 
-        const link = url ? 
-            url + "?" + query :
-            `${window.location.protocol}//${window.location.host}/#/?${query}`
-        ;
+        let link;
+        if (options.url)
+            link = options.url + "?" + query;
+        else if (options.path) {
+            link = `${window.location.protocol}//${window.location.host}${options.path}?${query}`;
+        } else {
+            link = `${window.location.protocol}//${window.location.host}/#/?${query}`   
+        }
 
         return link;
     }
