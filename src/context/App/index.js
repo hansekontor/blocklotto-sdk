@@ -85,27 +85,29 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         return () => unlisten();
     }, [history]);
 
-    // get own affiliate data
+    // get own affiliate data once user has registered
     useEffect(() => {
         const getAffiliate = () => {
-            // get aid
-            const aidBuf = Buffer.from(wallet.Path1899.publicKey, 'hex');
-            const aid = aidBuf.toString('base64');
-            
-            const query = new URLSearchParams({
-                aid
-            });
-            const url = `${window.location.protocol}//${window.location.host}/#/?${query}`;
+            if (email) {
+                // get aid
+                const aidBuf = Buffer.from(wallet.Path1899.publicKey, 'hex');
+                const aid = aidBuf.toString('base64');
+                
+                const query = new URLSearchParams({
+                    aid
+                });
+                const url = `${window.location.protocol}//${window.location.host}/#/?${query}`;
 
-            console.log("setting affiliate", aid);
-            setAffiliate({
-                aid,
-                url
-            });
+                console.log("setting affiliate", aid);
+                setAffiliate({
+                    aid,
+                    url
+                });                
+            }
         }
 
         getAffiliate();
-    }, [wallet]);
+    }, [wallet, email]);
 
     // get external aid from url
     useEffect(() => {
