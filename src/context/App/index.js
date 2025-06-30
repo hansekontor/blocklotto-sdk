@@ -325,10 +325,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         try {
             const isRedeemedTicket = ticket.redeemTx?.hash ? true : false;
             if (isRedeemedTicket) {
-                return onResult({
-                    redeemable: false,
-                    message: "Ticket has already been redeemed"
-                });
+                throw new Error("Ticket has already been redeemed");
             }
 
             const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
@@ -365,12 +362,16 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
                     }                    
                 }
             } else {
-                throw new Error("Ticket not yet redeemable");
+                return onResult({
+                    redeemable: false,
+                    message: "Ticket is not yet redeemable",
+                });
             }
         } catch(err) {
             return onResult({
                 redeemable: false,
-                message: err
+                message: err.message,
+                error: err
             });
         }
     }
