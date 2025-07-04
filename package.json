@@ -1,6 +1,6 @@
 {
   "name": "blocklotto-sdk",
-  "version": "0.9.10",
+  "version": "1.0.0",
   "module": "dist/index.js",
   "private": true,
   "scripts": {
