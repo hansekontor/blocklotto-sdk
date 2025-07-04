@@ -202,12 +202,7 @@ export const CashTabWrapper = ({ children, passWallet }) => {
      */
     const activateWallet = async (walletToActivate) => {
         return await activateWalletFn({ setLoading, updateWallets, setWallet }, walletToActivate);
-    }
-
-    /** @type {Array} */
-    const unredeemedTickets = /** @type {Array<{ redeemTx?: string }>} */ (tickets).filter(
-        (ticket) => !ticket.redeemTx
-    );
+    }    
 
     /** @type {number} */
     const balance = useMemo(() => {
@@ -236,7 +231,6 @@ export const CashTabWrapper = ({ children, passWallet }) => {
             wallet,
             tickets,
             balance,
-            unredeemedTickets,
             loading,
             apiError,
             cashtabSettings,
@@ -270,6 +264,7 @@ export const CashTabProvider = ({ children, Loading }) => {
     /** @type {[boolean, (value: boolean) => void]} */
     const [isLoading, setIsLoading] = useState(true);
 
+    // either get wallet from local storage or create a new wallet
     useEffect(() => {
         const fetchWallet = async () => {
             try {

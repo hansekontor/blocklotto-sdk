@@ -145,8 +145,8 @@ export const AuthProvider = ({ children }) => {
         document.addEventListener('visibilitychange', handleDocVisibilityChange);
     };
 
+    // Cleanup function to set isMounted to false when the component unmounts
     useEffect(() => {
-        // Cleanup function to set isMounted to false when the component unmounts
         return () => {
             isMounted.current = false;
         };

@@ -45,16 +45,24 @@ export default function NotificationAnimation({ children, id, removeNotification
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    useEffect(async () => {
-        await sleep(currency.notificationDurationShort * 1000);
-        setIsClosing(true);
+    // fade out notification after timeout
+    useEffect(() => {
+        const handleClosing = async () => {
+            await sleep(currency.notificationDurationShort * 1000);
+            setIsClosing(true);
+        };
+        handleClosing();
     }, []);
 
-    useEffect(async () => {
-        if (isClosing) {
-            await sleep(2000);
-            setIsClosed(true);
-        }
+    // close notification after fadeout
+    useEffect(() => {
+        const handleClosing = async () => {
+            if (isClosing) {
+                await sleep(2000);
+                setIsClosed(true);
+            }
+        };
+        handleClosing();
     }, [isClosing])
 
     if (isClosed) {

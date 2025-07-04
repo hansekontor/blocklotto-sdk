@@ -35,7 +35,8 @@ export function CashoutProvider({ children }) {
         handleTilloBrandChange,
         getGiftcard,
         setGiftcardAmount,
-        setGiftcardLink
+        setGiftcardLink,
+        setTilloStage
      } = useTillo();
 
     const token = slpBalancesAndUtxos.tokens?.length > 0 ? slpBalancesAndUtxos.tokens[0] : false;
@@ -43,14 +44,15 @@ export function CashoutProvider({ children }) {
 
     const [cashoutMethod, setCashoutMethod] = useState("tillo");
 
-    const previousPath = location.state?.returnTo || "/select";
-
     // force wallet update on cashout
-    useEffect(async () => {
-        setLoadingStatus("LOADING WALLET");
-        await forceWalletUpdate();
-        await sleep(3000);
-        setLoadingStatus(false);
+    useEffect(() => {
+        const loadWallet = async () => {
+            setLoadingStatus("LOADING WALLET");
+            await forceWalletUpdate();
+            await sleep(3000);
+            setLoadingStatus(false);
+        };
+        loadWallet();
     }, []);
 
     const checkBalance = () => {
@@ -58,15 +60,11 @@ export function CashoutProvider({ children }) {
         return hasSufficientBalance;
     }
 
-    const getGiftcardLink = async (e) => {
-        e.preventDefault();
-
-        const brand = e.target.brand.value;
-
-        const link = await getGiftcard(brand);
+    const getGiftcardLink = async (brand, onError) => {
+        const link = await getGiftcard(brand, onError);
         setGiftcardLink(link);
 
-        return link;
+        return link;            
     }
 
     const minCashoutAmount = 10;
@@ -78,7 +76,6 @@ export function CashoutProvider({ children }) {
                 cashoutMethod,
                 minCashoutAmount,
                 maxCashoutAmount,
-                checkBalance,
                 tilloStage,
                 giftcardAmount,
                 giftcardLink,
@@ -87,12 +84,13 @@ export function CashoutProvider({ children }) {
                 tilloBrands,
                 tilloSelection,
                 brandData, 
-                setGiftcardAmount,
-                setGiftcardLink,
+                checkBalance,
                 filterTilloBrands,
                 handleTilloBrandChange,
-                getGiftcard,
                 getGiftcardLink,
+                setGiftcardAmount,
+                setGiftcardLink,
+                setTilloStage,
             }}
         >
             {children}

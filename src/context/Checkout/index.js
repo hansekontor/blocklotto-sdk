@@ -8,7 +8,7 @@
  * Please consult the project maintainers before making modifications.
  */
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useCashTab } from '../CashTab';
 import { useApp } from '../App';
 import { getWalletState } from '../../utils/cashMethods';
@@ -23,7 +23,7 @@ const ticketPrice = 10;
 export const CheckoutContext = createContext({});
 
 export const CheckoutProvider = ({ children }) => {
-    const { ticketQuantity, setTicketQuantity, setTicketsToRedeem } = useApp();
+    const { ticketQuantity, setTicketQuantity, setTicketsToRedeem, etokenTimeout } = useApp();
 
     // find ticket indicator
     const { wallet, forceWalletUpdate, addIssueTxs } = useCashTab();
@@ -53,21 +53,20 @@ export const CheckoutProvider = ({ children }) => {
     const [kycCancelCount, setKycCancelCount] = useState(0);
     const [nmiCheckoutVariant, setNmiCheckoutVariant] = useState("lightbox");
 
-    const handlePaymentMethod = (method) => {
-        setPaymentProcessor(method);
-    }
+    // update wallet when checkout begins
+    useEffect(() => {
+        if (!etokenTimeout)
+            forceWalletUpdate();
+    }, [])
 
     useInitialLoad(tickets, setHasEmail, setIsKYCed);
 
     const {
-        getPaymentRequest,
-        buildPayment,
         sendPayment,
         capturePayment,
         initiatePayment,
-        handleEtokenPayment,
         handleNmiResult,
-        handleConfirmation,
+        handlePayment,
     } = usePayment({
         authPayment,
         ticketQuantity,
@@ -87,12 +86,11 @@ export const CheckoutProvider = ({ children }) => {
         setTicketQtyError,
         setShowPaymentForm,
         setTicketsToRedeem,
+        setPaymentProcessor,
     })
 
     const {
-        setKycResult,
-        handleKYCResult,
-        handleKYC
+        handleKYCandCapture
     } = useKYC({
         authPayment,
         kycConfig,
@@ -106,7 +104,7 @@ export const CheckoutProvider = ({ children }) => {
         setKycConfig,
     })
 
-    const { handleAgree, handleSubmitEmail } = useTermsAndEmail({
+    const { handleAgree, handleSubmitAccount } = useTermsAndEmail({
         hasAgreed,
         setHasAgreed,
         setFirstRendering,
@@ -117,7 +115,6 @@ export const CheckoutProvider = ({ children }) => {
 
     return (
         <CheckoutContext.Provider value={{
-            isFirstRendering,
             hasAgreed,
             hasEmail,
             showPaymentForm,
@@ -130,14 +127,13 @@ export const CheckoutProvider = ({ children }) => {
             maxEtokenTicketQuantity,
             ticketPrice,
             handleAgree,
-            handleKYC,
-            handleConfirmation,
-            handleSubmitEmail,
-            handlePaymentMethod,
+            handleKYCandCapture,
+            handlePayment,
+            handleSubmitAccount,
             initiatePayment,
+            handleNmiResult,
             setTicketQuantity,
             setShowPaymentForm,
-            handleNmiResult,
         }}>
             {children}
         </CheckoutContext.Provider>

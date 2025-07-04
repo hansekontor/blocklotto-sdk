@@ -12,7 +12,7 @@ import { useCashTab } from '../CashTab';
 import { Modal } from 'antd';
 import { bcrypto, KeyRing, TX, Coin, Script } from '@hansekontor/checkout-components';
 const { SHA256 } = bcrypto;
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import useBCH from '../../hooks/useBCH';
 import { U64 } from 'n64';
 
@@ -23,14 +23,18 @@ import useScript from '../../hooks/useScript';
 import TXUtil from '../../utils/txutil';
 import playerWinningsTier from '../../constants/winningTiers';
 import sleep from '../../utils/sleep';
+import { getWalletState } from '../../utils/cashMethods';
 
 export const AppContext = createContext/** @type {import('./types').AppContextValue} */({});
 
-export const AppWrapper = ({ Loading, children, user }) => {
+export const AppWrapper = ({ Loading, children, user, setUser }) => {
     const history = useHistory();
-    const { wallet, unredeemedTickets, balance, addMinedTicketToStorage, addRedeemTxToStorage, createWallet, validateMnemonic, forceWalletUpdate } = useCashTab();
-    const { checkRedeemability, broadcastTx } = useBCH();
+    const location = useLocation();
+    const { wallet, balance, addMinedTicketToStorage, addRedeemTxToStorage, createWallet, validateMnemonic, forceWalletUpdate } = useCashTab();
+    const { getTxBcash, broadcastTx } = useBCH();
     const notify = useNotifications();
+    const walletState = getWalletState(wallet);
+    const { tickets } = walletState;
 
     /**
      * @typedef {number[]} PlayerNumbers
@@ -48,6 +52,12 @@ export const AppWrapper = ({ Loading, children, user }) => {
     const [loader, setLoader] = useState(true);
 
     /** @type {Array} */
+    const [unredeemedTickets, setUnredeemedTickets] = useState([]);
+
+    /** @type {Array} */
+    const [redeemableTickets, setRedeemabletickets] = useState([]);
+
+    /** @type {Array} */
     const [ticketsToRedeem, setTicketsToRedeem] = useState([]);
 
     /** @type {Array} */
@@ -56,12 +66,18 @@ export const AppWrapper = ({ Loading, children, user }) => {
     /** @type {[number, (value: number) => void]} */
     const [ticketQuantity, setTicketQuantity] = useState(1);
 
-    const [protection, setProtection] = useState(true);
+    const [protection, setProtection] = useState(false);
     const [walletUpdateAvailable, setWalletUpdateAvailable] = useState(false);
+    const [etokenTimeout, setEtokenTimeout] = useState(false);  
 
     const [affiliate, setAffiliate] = useState({});
     const [externalAid, setExternalAid] = useState(""); 
 
+    const [isFirstTicket, setIsFirstTicket] = useState(true);
+    
+    const [email, setEmail] = useState(false);
+
+    // listen to history changes
     useEffect(() => {
         const unlisten = history.listen(() => {
             setLoadingStatus("");
@@ -69,27 +85,29 @@ export const AppWrapper = ({ Loading, children, user }) => {
         return () => unlisten();
     }, [history]);
 
-    // get own affiliate data
+    // get own affiliate data once user has registered
     useEffect(() => {
         const getAffiliate = () => {
-            // get aid
-            const aidBuf = Buffer.from(wallet.Path1899.publicKey, 'hex');
-            const aid = aidBuf.toString('base64');
-            
-            const query = new URLSearchParams({
-                aid
-            });
-            const url = `${window.location.protocol}//${window.location.host}/#/?${query}`;
+            if (email) {
+                // get aid
+                const aidBuf = Buffer.from(wallet.Path1899.publicKey, 'hex');
+                const aid = aidBuf.toString('base64');
+                
+                const query = new URLSearchParams({
+                    aid
+                });
+                const url = `${window.location.protocol}//${window.location.host}/#/?${query}`;
 
-            console.log("setting affiliate", aid);
-            setAffiliate({
-                aid,
-                url
-            });
+                console.log("setting affiliate", aid);
+                setAffiliate({
+                    aid,
+                    url
+                });                
+            }
         }
 
         getAffiliate();
-    }, [wallet]);
+    }, [wallet, email]);
 
     // get external aid from url
     useEffect(() => {
@@ -113,6 +131,16 @@ export const AppWrapper = ({ Loading, children, user }) => {
 
     }, []);
 
+    // update new tickets
+    useEffect(() => {
+        const newUnredeemedTickets = tickets.filter(ticket => !ticket.redeemTx);
+        setUnredeemedTickets(newUnredeemedTickets);
+
+        const newRedeemableTickets = newUnredeemedTickets.filter(ticket => ticket.issueTx?.height > 0);
+        setRedeemabletickets(newRedeemableTickets);
+    }, [tickets]);
+
+    // update wallet availability upon new tickets
     useEffect(() => {
         if (unredeemedTickets.length > 0) {
             if (!walletUpdateAvailable)
@@ -121,6 +149,43 @@ export const AppWrapper = ({ Loading, children, user }) => {
             setWalletUpdateAvailable(false);
         }
     }, [unredeemedTickets]);
+
+    // set isFirstTicket false if 2nd ticket has been bought
+    useEffect(() => {
+        if (tickets.length > 0) {
+            if (isFirstTicket) {
+                setIsFirstTicket(false);
+            }
+        } else {
+            if (!isFirstTicket) {
+                setIsFirstTicket(true);
+            }
+        }
+    }, [tickets]);
+
+    // update email state from user
+    useEffect(() => {
+        console.log("useEffect email")
+        const updateEmail = user.email && !email;
+        console.log("updateEmail", updateEmail);
+        console.log("user.email", user.email);
+        console.log("email", email);
+        if (updateEmail) {
+            setEmail(user.email);
+        }
+    }, [user])    
+
+    // turn off etokenTimeout after 30 seconds
+    useEffect(() => {
+        async function endEtokenTimeout() {
+            const timeout = 30 * 1000;
+            await sleep(timeout);
+            setEtokenTimeout(false);
+        }
+
+        if (etokenTimeout)
+            endEtokenTimeout();
+    }, [etokenTimeout])
 
     const getMinedTicket = async (hash) => {
         const ticketRes = await fetch(`https://lsbx.nmrai.com/v1/ticket/${hash}`, {
@@ -230,7 +295,7 @@ export const AppWrapper = ({ Loading, children, user }) => {
                 console.log('ptx id', ptx.txid())
 
                 const redeemData = {
-                    actualPayoutNum: U64.fromBE(actualPayoutBE).toNumber(),
+                    payoutAmountNum: U64.fromBE(actualPayoutBE).toNumber(),
                     tier,
                     opponentNumbers,
                     resultingNumbers
@@ -239,6 +304,7 @@ export const AppWrapper = ({ Loading, children, user }) => {
 
                 const redeemHash = ptx.txid();
 
+                // remove redeemed ticket from ticketsToRedeem
                 const outstandingTickets = ticketsToRedeem;
                 outstandingTickets.shift();
                 setTicketsToRedeem(outstandingTickets);
@@ -250,18 +316,83 @@ export const AppWrapper = ({ Loading, children, user }) => {
             }
         } catch (err) {
             console.error(err);
-            notify({type: "error", message: "Broadcasting Error"});
-            return;
+            throw new Error(err);
         }
     }
 
-    const changeEmail = async (email) => {
+    // checks if ticket can be redeemed
+    const checkTicketRedeemability = async (ticket, polling, onResult) => {
+        try {
+            const isRedeemedTicket = ticket.redeemTx?.hash ? true : false;
+            if (isRedeemedTicket) {
+                throw new Error("Ticket has already been redeemed");
+            }
+
+            const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
+            let isMined = issueTxFromNode?.height > -1;
+            const hasLottoSig = ticket.parsed?.minedTicket?.lottoSignature;
+
+            if (isMined || hasLottoSig) {
+                console.log("isMined", isMined);
+                return onResult({
+                    redeemable: true,
+                    message: "You can redeem your ticket now!"
+                });
+            } else if (polling) {
+                // poll indexer every 2 min
+                const timeBetweenPolling = 2 * 60 * 1000;
+
+                while (!isMined) {
+                    console.log("Polling: started waiting period");
+                    await sleep(timeBetweenPolling);
+                    const issueTxFromNode = await getTxBcash(ticket.issueTx.hash);
+                    console.log("issueTxFromNode", issueTxFromNode);
+                    if (!issueTxFromNode) {
+                        throw new Error("Transaction does not exist");
+                    }
+                    isMined = issueTxFromNode.height > -1;
+                    console.log("isMined", isMined);
+                    if (!isMined) {
+                        notify({ message: "Please wait...", type: "info" });
+                    } else {
+                        return onResult({
+                            redeemable: true,
+                            message: "You can redeem your ticket now!"
+                        });
+                    }                    
+                }
+            } else {
+                return onResult({
+                    redeemable: false,
+                    message: "Ticket is not yet redeemable",
+                });
+            }
+        } catch(err) {
+            return onResult({
+                redeemable: false,
+                message: err.message,
+                error: err
+            });
+        }
+    }
+
+    const changeEmail = async (emailInput) => {
+        const isValidEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(emailInput);
+        if (!isValidEmail) {
+            throw new Error("Invalid Email");
+        }
+
+        const isOldEmail = emailInput === email;
+        if (isOldEmail) {
+            throw new Error("Old Email Address");
+        }
+
         const keyring = KeyRing.fromSecret(wallet.Path1899.fundingWif);
-		const msg = Buffer.from(email, 'utf-8');
+		const msg = Buffer.from(emailInput, 'utf-8');
 		const sig = keyring.sign(SHA256.digest(msg));
 
 		const json = {
-			email: email, 
+			email: emailInput, 
 			pubkey: wallet.Path1899.publicKey,
 			signature: sig.toString('hex'),			
 		};
@@ -280,15 +411,14 @@ export const AppWrapper = ({ Loading, children, user }) => {
 		const userResJson = await userRes.json();
 		console.log("userResJson", userResJson);
 		if (userRes.status === 200) {
+            console.log("blocklotto call setEmail() with", emailInput)
+            setEmail(emailInput);
             notify({
                 type: "success",
                 message: "Email has been changed"
             });
         } else {
-            notify({
-                type: "error",
-                message: "Error changing email"
-            });
+            throw new Error("Email API Error");
 		}
     }
     
@@ -300,39 +430,69 @@ export const AppWrapper = ({ Loading, children, user }) => {
     }
 
     const updateWallet = async () => {
-        setLoadingStatus("LOADING WALLET");
-        await forceWalletUpdate();
-        await sleep(3000);
-        setWalletUpdateAvailable(false);
-        setLoadingStatus(false);
+        if (walletUpdateAvailable) {
+            setLoadingStatus("LOADING WALLET");
+            await forceWalletUpdate();
+            await sleep(3000);
+            setWalletUpdateAvailable(false);
+            setLoadingStatus(false);            
+        } else {
+            notify({ type: "error", message: "Wallet Update unavailable"});
+        }
+    }
+
+    const getAffiliateLink = (options) => {
+
+        const query = new URLSearchParams({
+            aid: affiliate.aid,
+        });
+
+        let link;
+        if (options.url)
+            link = options.url + "?" + query;
+        else if (options.path) {
+            link = `${window.location.protocol}//${window.location.host}${options.path}?${query}`;
+        } else {
+            link = `${window.location.protocol}//${window.location.host}/#/?${query}`   
+        }
+
+        return link;
     }
 
     return (
         <AppContext.Provider value={{
             protection,
             user,
+            email,
             wallet,
             unredeemedTickets,
+            redeemableTickets,
             balance,
             playerNumbers,
             ticketsToRedeem,
             gameTickets,
+            isFirstTicket,
             ticketQuantity,
             affiliate,
             externalAid,
             walletUpdateAvailable,
-            checkRedeemability, 
+            etokenTimeout,
+            checkTicketRedeemability, 
             redeemTicket,
             changeEmail,
             importWallet,
             validateMnemonic,
             updateWallet,
+            getAffiliateLink,
+            setUser,
+            setEmail,
             setTicketQuantity,
             setProtection,
             setLoadingStatus,
             setPlayerNumbers,
             setTicketsToRedeem,
-            setGameTickets
+            setGameTickets,
+            setEtokenTimeout,
         }}>
             {children}
             {loadingStatus && <Loading>{loadingStatus}</Loading>}
@@ -343,6 +503,7 @@ export const AppWrapper = ({ Loading, children, user }) => {
 export const AppProvider = ({ Loading, children }) => {
 
     const { wallet } = useCashTab();
+    const address = wallet.Path1899.cashAddress;
     const [modal, modalHolder] = Modal.useModal();
 
     const [user, setUser] = useState({});
@@ -470,7 +631,7 @@ export const AppProvider = ({ Loading, children }) => {
         }
 
         getUser();
-    }, [wallet]);
+    }, [address]);
 
     if (isLoading) {
         return <>{modalHolder}<Loading>Loading Wallet...</Loading></>;
@@ -485,7 +646,7 @@ export const AppProvider = ({ Loading, children }) => {
     }
 
     return (
-        <AppWrapper user={user} Loading={Loading}>
+        <AppWrapper user={user} setUser={setUser} Loading={Loading}>
             {children}
         </AppWrapper>
     )

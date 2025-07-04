@@ -14,20 +14,24 @@ import { useApp } from "../../App";
  * @param {(val: boolean) => void} setIsKYCed - Setter to update `isKYCed` state.
  */
 export default function useInitialLoad(tickets, setHasEmail, setIsKYCed) {
-    const { setLoadingStatus, user } = useApp();
+    const { setLoadingStatus, user, email } = useApp();
 
     useEffect(() => {
         const initialStates = async () => {
-            if (user.email) setHasEmail(true);
+            if (user.email || email) setHasEmail(true);
 
-            if (user.kyc_status?.includes("approved") || tickets.length > 0) {
+            const isDbApproved = user.kyc_status?.includes("approved");
+            const hasTickets = tickets.length > 0;
+            const isApproved = isDbApproved || hasTickets;
+            const needsReview = user.kyc_status?.includes("needs_review");
+            const isDeclined = user.kyc_status?.includes("declined");
+
+            if (isApproved) {
                 setIsKYCed(true);
-            } else if (user.kyc_status === "needs_review") {
+            } else if (needsReview) {
                 setLoadingStatus("KYC NEEDS REVIEW");
-                // return repeatOnboarding();
-            } else if (user.kyc_status?.includes("declined")) {
+            } else if (isDeclined) {
                 setLoadingStatus("ACCESS DENIED");
-                // return repeatOnboarding();
             }
         };
         initialStates();

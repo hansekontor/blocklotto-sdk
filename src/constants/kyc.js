@@ -1,0 +1,1 @@
+export const kycWorkflowId = "workflow_a93TCBh";
