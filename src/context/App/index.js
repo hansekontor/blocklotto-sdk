@@ -10,7 +10,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useCashTab } from '../CashTab';
 import { Modal } from 'antd';
-import { bcrypto, KeyRing, TX, Coin, Script } from '@hansekontor/checkout-components';
+import { bcrypto, KeyRing, TX, Coin, Script, Address } from '@hansekontor/checkout-components';
 const { SHA256 } = bcrypto;
 import { useHistory, useLocation } from 'react-router-dom';
 import useBCH from '../../hooks/useBCH';
@@ -31,7 +31,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
     const history = useHistory();
     const location = useLocation();
     const { wallet, balance, addMinedTicketToStorage, addRedeemTxToStorage, createWallet, validateMnemonic, forceWalletUpdate } = useCashTab();
-    const { getTxBcash, broadcastTx } = useBCH();
+    const { getTxBcash, broadcastTx, getTicketData } = useBCH();
     const notify = useNotifications();
     const walletState = getWalletState(wallet);
     const { tickets } = walletState;
@@ -459,6 +459,26 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
         return link;
     }
 
+    const getAffiliateP2SH = (pubkeyBuf) => {
+        const script = new Script()
+            .pushSym('dup')
+            .pushData(pubkeyBuf)
+            .pushSym('equalverify')
+            .pushSym('checksig')
+            .compile();
+
+        return Address.fromScripthash(script.hash160());
+    }
+
+    const getAffiliateTicketData = async () => {
+        const pubkey = wallet.Path1899.publicKey;
+        const pubkeyBuf = Buffer.from(pubkey, 'hex');
+        const p2shAddress = getAffiliateP2SH(pubkeyBuf);
+        const tickets = await getTicketData(p2shAddress.toString());
+
+        return tickets;
+    }
+
     return (
         <AppContext.Provider value={{
             protection,
@@ -484,6 +504,7 @@ export const AppWrapper = ({ Loading, children, user, setUser }) => {
             validateMnemonic,
             updateWallet,
             getAffiliateLink,
+            getAffiliateTicketData,
             setUser,
             setEmail,
             setTicketQuantity,
