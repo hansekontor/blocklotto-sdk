@@ -2,7 +2,7 @@
 
 ## Purpose
 
-[Block Lotto](https://lotto.mp]) is running on a provably fair, [Bitcoin-based Protocol](https://github.com/badger-cash/block-lotto-specification).
+[Block Lotto](https://lotto.mp) is running on a provably fair, [Bitcoin-based Protocol](https://github.com/badger-cash/block-lotto-specification).
 
 This is an open-source React module that allows creators to build new skins around it. We have built a [devkit](https://beta.lotto.mp) as a minimal implementation of this module which can be forked and customized.
 
