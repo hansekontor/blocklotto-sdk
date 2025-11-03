@@ -1,5 +1,7 @@
 # blocklotto-sdk
 
+- currently implemented on [sdk.lotto.mp](https://sdk.lotto.mp) and [beta.lotto.mp](https://beta.lotto.mp).
+
 ## Purpose
 
 [Block Lotto](https://lotto.mp) is running on a provably fair, [Bitcoin-based Protocol](https://github.com/badger-cash/block-lotto-specification).
