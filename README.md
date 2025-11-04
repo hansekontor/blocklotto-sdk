@@ -1,6 +1,6 @@
 # blocklotto-sdk
 
-- currently implemented on [sdk.lotto.mp](https://sdk.lotto.mp) and [beta.lotto.mp](https://beta.lotto.mp).
+- currently implemented on [lotto.mp](https://lotto.mp) in two skins: [devkit](https://lotto.mp/dev-kit) and [CLUX](https://lotto.mp/clux).
 
 ## Purpose
 
